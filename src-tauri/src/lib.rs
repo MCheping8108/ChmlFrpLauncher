@@ -7,14 +7,12 @@ use std::thread;
 use tauri::{Emitter, Manager, State};
 use futures_util::StreamExt;
 
-// 清理日志中的敏感信息
+// 隐藏用户日志里面的token
 fn sanitize_log(message: &str, user_token: &str) -> String {
     let mut result = message.to_string();
     
-    // 替换完整的 token
     result = result.replace(user_token, "***TOKEN***");
     
-    // 如果 token 包含点号（如 xxx.yyy 格式），分别替换两部分
     if let Some(dot_pos) = user_token.find('.') {
         let first_part = &user_token[..dot_pos];
         let second_part = &user_token[dot_pos + 1..];
@@ -27,7 +25,6 @@ fn sanitize_log(message: &str, user_token: &str) -> String {
         }
     }
     
-    // 替换任何可能是 token 前缀的长字符串（至少 10 个字符的字母数字组合）
     if user_token.len() >= 10 {
         for window_size in (8..=user_token.len()).rev() {
             if window_size <= user_token.len() {
@@ -49,7 +46,7 @@ struct DownloadProgress {
     percentage: f64,
 }
 
-// 存储运行中的 frpc 进程
+// 存储运行中的frpc进程
 struct FrpcProcesses {
     processes: Mutex<HashMap<i32, Child>>,
 }
@@ -130,14 +127,20 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
     
-    let total_size = match client.head(&url).send().await {
-        Ok(head_response) => {
-            head_response.content_length().unwrap_or(0)
-        }
-        Err(_) => 0
-    };
+    // 获取文件总大小
+    let mut total_size: u64 = 0;
     
-    let mut actual_total_size = total_size;
+    // 先尝试 HEAD 请求
+    if let Ok(head_response) = client.head(&url).send().await {
+        if let Some(len) = head_response.content_length() {
+            total_size = len;
+        }
+    }
+    
+    // 如果 HEAD 失败，将通过第一次 GET 请求的 Range 响应获取
+    if total_size == 0 {
+        eprintln!("HEAD 请求未获取文件大小，将从 GET 响应头获取");
+    }
     
     // 创建或打开文件
     use std::fs::OpenOptions;
@@ -151,31 +154,30 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
     let mut downloaded: u64 = 0;
     let mut retry_count = 0;
     const MAX_RETRIES: u32 = 5;
+    const CHUNK_SIZE: u64 = 1024 * 1024; // 1MB 分块
     
-    // 使用循环支持断点续传
+    // 断点续传
     loop {
-        if actual_total_size > 0 {
-            eprintln!("正在下载: {} / {} bytes ({:.1}%)", downloaded, actual_total_size, 
-                      (downloaded as f64 / actual_total_size as f64) * 100.0);
-        } else {
-            eprintln!("正在下载: {} bytes", downloaded);
-        }
-        
-        // 构建带 Range 的请求以支持断点续传
         let mut request = client.get(&url);
-        if downloaded > 0 {
-            request = request.header("Range", format!("bytes={}-", downloaded));
-            eprintln!("断点续传，从 {} 字节开始", downloaded);
-            // 定位文件指针到当前位置
-            use std::io::{Seek, SeekFrom};
-            file.seek(SeekFrom::Start(downloaded)).map_err(|e| format!("定位文件失败: {}", e))?;
+        
+        if downloaded == 0 && total_size == 0 {
+            request = request.header("Range", format!("bytes=0-{}", CHUNK_SIZE - 1));
+        } else if downloaded > 0 {
+            let end = if total_size > 0 {
+                std::cmp::min(downloaded + CHUNK_SIZE - 1, total_size - 1)
+            } else {
+                downloaded + CHUNK_SIZE - 1
+            };
+            request = request.header("Range", format!("bytes={}-{}", downloaded, end));
+        } else if total_size > 0 {
+            let end = std::cmp::min(CHUNK_SIZE - 1, total_size - 1);
+            request = request.header("Range", format!("bytes=0-{}", end));
         }
         
         let response = match request.send().await {
             Ok(resp) => resp,
             Err(e) => {
                 retry_count += 1;
-                eprintln!("请求失败 (第 {} 次重试): {}", retry_count, e);
                 if retry_count >= MAX_RETRIES {
                     return Err(format!("下载失败，已重试 {} 次: {}", MAX_RETRIES, e));
                 }
@@ -185,23 +187,35 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
         };
         
         let status = response.status();
-        if !status.is_success() && status.as_u16() != 206 {
+        let is_success = status.is_success() || status.as_u16() == 206; // 206 = Partial Content
+        if !is_success {
             return Err(format!("下载失败，HTTP 状态码: {}", status));
         }
         
-        // 从 GET 响应中获取实际文件大小
-        if actual_total_size == 0 {
-            if let Some(content_length) = response.content_length() {
-                actual_total_size = content_length;
-                eprintln!("文件大小 (GET): {} bytes", actual_total_size);
+        if status.as_u16() == 206 {
+            if let Some(content_range) = response.headers().get("content-range") {
+                if let Ok(range_str) = content_range.to_str() {
+                    // 格式: bytes start-end/total
+                    if let Some(slash_pos) = range_str.rfind('/') {
+                        if let Ok(size) = range_str[slash_pos + 1..].parse::<u64>() {
+                            if size > 0 && total_size != size {
+                                total_size = size;
+                            }
+                        }
+                    }
+                }
+            }
+        } else if let Some(content_len) = response.content_length() {
+            if total_size == 0 {
+                total_size = content_len;
             }
         }
         
-        // 重置重试计数
         retry_count = 0;
         
         let mut stream = response.bytes_stream();
         let mut chunk_error = false;
+        let mut this_chunk_size: u64 = 0;
         
         while let Some(item) = stream.next().await {
             match item {
@@ -209,44 +223,45 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
                     use std::io::Write;
                     file.write_all(&chunk).map_err(|e| format!("写入文件失败: {}", e))?;
                     
-                    downloaded += chunk.len() as u64;
-                    let percentage = if actual_total_size > 0 {
-                        (downloaded as f64 / actual_total_size as f64) * 100.0
+                    let chunk_len = chunk.len() as u64;
+                    downloaded += chunk_len;
+                    this_chunk_size += chunk_len;
+                    
+                    let percentage = if total_size > 0 {
+                        (downloaded as f64 / total_size as f64) * 100.0
                     } else {
                         0.0
                     };
                     
-                    // 发送进度更新（每 512KB 或 10% 发送一次）
-                    if downloaded % (512 * 1024) < chunk.len() as u64 || 
-                       (actual_total_size > 0 && (downloaded * 10 / actual_total_size) != ((downloaded - chunk.len() as u64) * 10 / actual_total_size)) {
+                    // 发送进度更新（每 100KB 发送一次）
+                    if this_chunk_size >= 100 * 1024 {
                         let _ = app_handle.emit("download-progress", DownloadProgress {
                             downloaded,
-                            total: actual_total_size,
+                            total: total_size,
                             percentage,
                         });
-                        if actual_total_size > 0 {
-                            eprintln!("进度: {:.1}% ({} / {} bytes)", percentage, downloaded, actual_total_size);
-                        } else {
-                            eprintln!("已下载: {} bytes", downloaded);
-                        }
+                        this_chunk_size = 0;
                     }
                 }
-                Err(e) => {
-                    eprintln!("下载数据块出错: {}", e);
+                Err(_e) => {
                     chunk_error = true;
                     break; // 跳出内层循环，外层循环会重试
                 }
             }
         }
         
-        // 如果没有错误
+        // 如果没有错误(END，此逻辑容易出现安全问题，API开发完成后会从API获取HASH和文件大小)
         if !chunk_error {
-            // 如果知道总大小，检查是否已下载完成
-            if actual_total_size > 0 && downloaded >= actual_total_size {
+            // 检查是否已下载完成
+            if total_size > 0 && downloaded >= total_size {
                 break;
             }
-            // 如果不知道总大小，stream 结束就认为完成
-            if actual_total_size == 0 {
+            // 如果不知道总大小且本次获取少于预期，认为完成
+            if total_size == 0 && this_chunk_size < CHUNK_SIZE {
+                break;
+            }
+            // 如果没有获取到任何数据，认为已完成
+            if this_chunk_size == 0 {
                 break;
             }
         }
@@ -254,15 +269,12 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
         // 如果有错误，等待后重试
         if chunk_error {
             retry_count += 1;
-            eprintln!("准备重试 (第 {} 次)...", retry_count);
             if retry_count >= MAX_RETRIES {
                 return Err(format!("下载失败，已重试 {} 次", MAX_RETRIES));
             }
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     }
-    
-    eprintln!("下载完成: {} bytes", downloaded);
     
     // 确保文件已完全写入
     use std::io::Write;
@@ -271,22 +283,19 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
     // 发送最终进度（100%）
     let _ = app_handle.emit("download-progress", DownloadProgress {
         downloaded,
-        total: actual_total_size,
+        total: total_size,
         percentage: 100.0,
     });
     
     // 验证下载的文件大小（如果知道预期大小）
-    if actual_total_size > 0 && downloaded < actual_total_size {
-        eprintln!("警告: 下载不完整! 预期 {} bytes, 实际 {} bytes", actual_total_size, downloaded);
-        return Err(format!("下载不完整: 预期 {} bytes, 实际下载 {} bytes", actual_total_size, downloaded));
+    if total_size > 0 && downloaded < total_size {
+        return Err(format!("下载不完整: 预期 {} bytes, 实际下载 {} bytes", total_size, downloaded));
     }
     
     // 确保至少下载了一些数据
     if downloaded == 0 {
         return Err("下载失败: 没有接收到任何数据".to_string());
     }
-    
-    eprintln!("文件验证通过: {} bytes", downloaded);
     
     // 在 Unix 系统上设置执行权限
     #[cfg(unix)]
@@ -318,7 +327,6 @@ async fn start_frpc(
 ) -> Result<String, String> {
     eprintln!("========================================");
     eprintln!("[隧道 {}] 开始启动 frpc", tunnel_id);
-    eprintln!("[隧道 {}] Token: ***隐藏***", tunnel_id);
     
     // 检查是否已经在运行
     {

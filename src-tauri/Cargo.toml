@@ -1,10 +1,10 @@
 [package]
-name = "app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+name = "ChmlFrpLauncher"
+version = "0.0.1"
+description = "ChmlFrp的官方启动器"
+authors = ["南充市轻爪网络科技有限公司 <chaoji@chcat.cn>"]
+license = "Apache-2.0"
+repository = "https://github.com/TechCat-Team/ChmlFrpLauncher"
 edition = "2021"
 rust-version = "1.77.2"
 
