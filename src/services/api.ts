@@ -27,6 +27,12 @@ export interface Tunnel {
   ip: string
 }
 
+export interface FlowPoint {
+  traffic_in: number
+  traffic_out: number
+  time: string
+}
+
 interface ApiResponse<T> {
   code: number
   msg?: string
@@ -98,6 +104,27 @@ export async function fetchTunnels(token?: string): Promise<Tunnel[]> {
   }
 
   throw new Error(data?.msg || "获取隧道列表失败")
+}
+
+export async function fetchFlowLast7Days(token?: string): Promise<FlowPoint[]> {
+  const storedUser = getStoredUser()
+  const bearer = token ?? storedUser?.usertoken
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录")
+  }
+
+  const res = await fetch(`${API_BASE_URL}/flow_last_7_days`, {
+    headers: { authorization: `Bearer ${bearer}` },
+  })
+
+  const data = (await res.json()) as ApiResponse<FlowPoint[]>
+
+  if (data?.code === 200 && Array.isArray(data.data)) {
+    return data.data
+  }
+
+  throw new Error(data?.msg || "获取近7日流量失败")
 }
 
 
