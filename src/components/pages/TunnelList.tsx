@@ -4,19 +4,49 @@ import { ScrollArea } from "../ui/scroll-area"
 import { fetchTunnels, type Tunnel, getStoredUser } from "../../services/api"
 import { frpcManager } from "../../services/frpcManager"
 
+// 模块级别的缓存，确保在组件卸载后数据仍然保留
+const tunnelListCache = {
+  tunnels: [] as Tunnel[],
+};
+
 export function TunnelList() {
-  const [tunnels, setTunnels] = useState<Tunnel[]>([])
-  const [loading, setLoading] = useState(true)
+  const [tunnels, setTunnels] = useState<Tunnel[]>(() => {
+    // 初始化时如果有缓存数据，先显示缓存数据
+    return tunnelListCache.tunnels;
+  })
+  const [loading, setLoading] = useState(() => {
+    // 如果有缓存数据，不显示加载状态
+    return tunnelListCache.tunnels.length === 0;
+  })
   const [error, setError] = useState("")
   const [runningTunnels, setRunningTunnels] = useState<Set<number>>(new Set())
   const [togglingTunnels, setTogglingTunnels] = useState<Set<number>>(new Set())
 
   const loadTunnels = async () => {
-    setLoading(true)
+    // 如果有缓存数据，先显示缓存数据
+    if (tunnelListCache.tunnels.length > 0) {
+      setTunnels(tunnelListCache.tunnels)
+      setLoading(false)
+      
+      // 检查缓存数据的运行状态
+      const running = new Set<number>()
+      for (const tunnel of tunnelListCache.tunnels) {
+        const isRunning = await frpcManager.isTunnelRunning(tunnel.id)
+        if (isRunning) {
+          running.add(tunnel.id)
+        }
+      }
+      setRunningTunnels(running)
+    } else {
+      // 第一次加载，显示加载状态
+      setLoading(true)
+    }
+    
     setError("")
     try {
       const data = await fetchTunnels()
       setTunnels(data)
+      tunnelListCache.tunnels = data
       
       const running = new Set<number>()
       for (const tunnel of data) {
@@ -27,9 +57,18 @@ export function TunnelList() {
       }
       setRunningTunnels(running)
     } catch (err) {
-      setTunnels([])
       const message = err instanceof Error ? err.message : "获取隧道列表失败"
-      setError(message)
+      // 如果是登录相关的错误，清除缓存
+      if (message.includes("登录") || message.includes("token") || message.includes("令牌")) {
+        tunnelListCache.tunnels = []
+        setTunnels([])
+        setError(message)
+      } else if (tunnelListCache.tunnels.length === 0) {
+        // 如果加载失败且没有缓存数据，才显示错误
+        setTunnels([])
+        setError(message)
+      }
+      console.error("获取隧道列表失败", err)
     } finally {
       setLoading(false)
     }

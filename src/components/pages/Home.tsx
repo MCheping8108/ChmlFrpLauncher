@@ -7,6 +7,13 @@ import {
   AccordionTrigger,
 } from "../../components/ui/accordion";
 
+// 模块级别的缓存，确保在组件卸载后数据仍然保留
+const homePageCache = {
+  userInfo: null as UserInfo | null,
+  flowData: [] as FlowPoint[],
+  signInInfo: null as SignInInfo | null,
+};
+
 interface HomeProps {
   user?: StoredUser | null;
   onUserChange?: (user: StoredUser | null) => void;
@@ -16,20 +23,41 @@ export function Home({ user, onUserChange }: HomeProps) {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const onUserChangeRef = useRef(onUserChange);
   
+  // 标记是否是第一次加载
+  const isFirstLoadRef = useRef(true);
+  
   // 保持回调引用最新
   useEffect(() => {
     onUserChangeRef.current = onUserChange;
   }, [onUserChange]);
 
-  const [flowData, setFlowData] = useState<FlowPoint[]>([]);
-  const [flowLoading, setFlowLoading] = useState(true);
+  const [flowData, setFlowData] = useState<FlowPoint[]>(() => {
+    // 初始化时如果有缓存数据，先显示缓存数据
+    return homePageCache.flowData;
+  });
+  const [flowLoading, setFlowLoading] = useState(() => {
+    // 如果有缓存数据，不显示加载状态
+    return homePageCache.flowData.length === 0;
+  });
   const [flowError, setFlowError] = useState("");
 
   // 签到信息相关状态
   const [signInInfoHover, setSignInInfoHover] = useState(false);
-  const [signInInfo, setSignInInfo] = useState<SignInInfo | null>(null);
+  const [signInInfo, setSignInInfo] = useState<SignInInfo | null>(() => {
+    // 初始化时如果有缓存数据，先显示缓存数据
+    return homePageCache.signInInfo;
+  });
   const [signInInfoLoading, setSignInInfoLoading] = useState(false);
   const [signInInfoError, setSignInInfoError] = useState("");
+
+  // 初始化时如果有缓存数据，立即显示
+  useEffect(() => {
+    const storedUser = getStoredUser();
+    if (storedUser?.usertoken && homePageCache.userInfo && homePageCache.userInfo.usertoken === storedUser.usertoken) {
+      setUserInfo(homePageCache.userInfo);
+      isFirstLoadRef.current = false;
+    }
+  }, []);
 
   // 获取最新用户信息
   useEffect(() => {
@@ -37,12 +65,31 @@ export function Home({ user, onUserChange }: HomeProps) {
       const storedUser = getStoredUser();
       if (!storedUser?.usertoken) {
         setUserInfo(null);
+        homePageCache.userInfo = null;
+        homePageCache.flowData = [];
+        homePageCache.signInInfo = null;
         return;
+      }
+
+      // 如果有缓存数据且 token 匹配，先显示缓存数据
+      if (homePageCache.userInfo && homePageCache.userInfo.usertoken === storedUser.usertoken) {
+        setUserInfo(homePageCache.userInfo);
+        isFirstLoadRef.current = false;
+      } else {
+        // token 不匹配或首次加载，清除相关缓存
+        if (homePageCache.userInfo?.usertoken !== storedUser.usertoken) {
+          homePageCache.flowData = [];
+          homePageCache.signInInfo = null;
+        }
+        // 第一次加载，显示加载状态
+        isFirstLoadRef.current = true;
       }
 
       try {
         const data = await fetchUserInfo();
         setUserInfo(data);
+        homePageCache.userInfo = data;
+        isFirstLoadRef.current = false;
         // 更新本地存储的用户信息
         const updatedUser = {
           username: data.username,
@@ -54,9 +101,12 @@ export function Home({ user, onUserChange }: HomeProps) {
         };
         saveStoredUser(updatedUser);
       } catch (err) {
-        // token 无效，清除本地信息
+        // token 无效，清除本地信息和缓存
         clearStoredUser();
         setUserInfo(null);
+        homePageCache.userInfo = null;
+        homePageCache.flowData = [];
+        homePageCache.signInInfo = null;
         // 通知父组件用户信息已清除
         onUserChangeRef.current?.(null);
         console.error("获取用户信息失败", err);
@@ -69,17 +119,30 @@ export function Home({ user, onUserChange }: HomeProps) {
     const loadFlow = async () => {
       if (!userInfo?.usertoken) {
         setFlowLoading(false);
+        homePageCache.flowData = [];
         return;
       }
 
-      setFlowLoading(true);
+      // 如果有缓存数据，先显示缓存数据
+      if (homePageCache.flowData.length > 0) {
+        setFlowData(homePageCache.flowData);
+        setFlowLoading(false);
+      } else {
+        // 第一次加载，显示加载状态
+        setFlowLoading(true);
+      }
+      
       setFlowError("");
       try {
         const data = await fetchFlowLast7Days();
         setFlowData(data);
+        homePageCache.flowData = data;
       } catch (err) {
-        setFlowData([]);
-        setFlowError(err instanceof Error ? err.message : "获取近7日流量失败");
+        // 如果加载失败且没有缓存数据，才显示错误
+        if (homePageCache.flowData.length === 0) {
+          setFlowData([]);
+          setFlowError(err instanceof Error ? err.message : "获取近7日流量失败");
+        }
         console.error("获取近7日流量失败", err);
       } finally {
         setFlowLoading(false);
@@ -92,15 +155,25 @@ export function Home({ user, onUserChange }: HomeProps) {
   useEffect(() => {
     if (!userInfo?.usertoken) {
       setSignInInfo(null);
+      homePageCache.signInInfo = null;
       return;
+    }
+
+    // 如果有缓存数据，先显示缓存数据
+    if (homePageCache.signInInfo) {
+      setSignInInfo(homePageCache.signInInfo);
     }
 
     const loadSignInInfo = async () => {
       try {
         const data = await fetchSignInInfo();
         setSignInInfo(data);
+        homePageCache.signInInfo = data;
       } catch (err) {
-        setSignInInfo(null);
+        // 如果加载失败且没有缓存数据，才清除
+        if (!homePageCache.signInInfo) {
+          setSignInInfo(null);
+        }
         console.error("获取签到信息失败", err);
       }
     };
