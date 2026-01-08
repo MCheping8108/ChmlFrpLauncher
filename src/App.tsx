@@ -7,6 +7,7 @@ import { Logs } from "./components/pages/Logs"
 import { Settings } from "./components/pages/Settings"
 import { getStoredUser, type StoredUser } from "./services/api"
 import { frpcDownloader } from "./services/frpcDownloader.ts"
+import { updateService } from "./services/updateService"
 import { Progress } from "./components/ui/progress"
 import { logStore } from "./services/logStore"
 
@@ -20,6 +21,56 @@ function App() {
 
   useEffect(() => {
     logStore.startListening()
+  }, [])
+
+  useEffect(() => {
+    // 启动时自动检测更新
+    const checkUpdateOnStart = async () => {
+      if (!updateService.getAutoCheckEnabled()) {
+        return
+      }
+
+      try {
+        const result = await updateService.checkUpdate()
+        if (result.available) {
+          toast.info(
+            <div className="space-y-2">
+              <div className="text-sm font-medium">发现新版本: {result.version}</div>
+              {result.body && (
+                <div className="text-xs text-muted-foreground max-w-md whitespace-pre-wrap">
+                  {result.body}
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground mt-1">
+                更新将在后台下载，完成后会提示您安装
+              </div>
+            </div>,
+            { duration: 8000 }
+          )
+          
+          // 自动开始下载并安装更新
+          try {
+            await updateService.installUpdate()
+            toast.success("更新已下载完成，应用将在重启后更新", {
+              duration: 5000,
+            })
+          } catch (installError) {
+            // 静默失败，不打扰用户
+            console.error("自动下载更新失败:", installError)
+          }
+        }
+      } catch (error) {
+        // 静默失败，不打扰用户
+        console.error("自动检测更新失败:", error)
+      }
+    }
+
+    // 延迟一下再检查，避免影响启动速度
+    const timer = setTimeout(() => {
+      checkUpdateOnStart()
+    }, 2000)
+
+    return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
