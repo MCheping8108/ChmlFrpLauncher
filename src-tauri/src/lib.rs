@@ -645,12 +645,38 @@ async fn get_running_tunnels(processes: State<'_, FrpcProcesses>) -> Result<Vec<
     Ok(running_tunnels)
 }
 
+#[tauri::command]
+async fn is_autostart_enabled(
+    state: tauri::State<'_, tauri_plugin_autostart::AutoLaunchManager>,
+) -> Result<bool, String> {
+    state
+        .is_enabled()
+        .map_err(|e| format!("检查开机自启状态失败: {}", e))
+}
+
+#[tauri::command]
+async fn set_autostart(
+    enabled: bool,
+    state: tauri::State<'_, tauri_plugin_autostart::AutoLaunchManager>,
+) -> Result<(), String> {
+    if enabled {
+        state
+            .enable()
+            .map_err(|e| format!("启用开机自启失败: {}", e))
+    } else {
+        state
+            .disable()
+            .map_err(|e| format!("禁用开机自启失败: {}", e))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -670,7 +696,9 @@ pub fn run() {
             stop_frpc,
             is_frpc_running,
             get_running_tunnels,
-            test_log_event
+            test_log_event,
+            is_autostart_enabled,
+            set_autostart
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

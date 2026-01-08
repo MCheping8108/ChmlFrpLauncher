@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { frpcDownloader } from "../../services/frpcDownloader"
+import { autostartService } from "../../services/autostartService"
 import { Progress } from "../ui/progress"
 
 type ThemeMode = "light" | "dark"
@@ -16,6 +17,8 @@ const getInitialTheme = (): ThemeMode => {
 export function Settings() {
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme())
   const [isDownloading, setIsDownloading] = useState(false)
+  const [autostartEnabled, setAutostartEnabled] = useState(false)
+  const [autostartLoading, setAutostartLoading] = useState(false)
 
   useEffect(() => {
     const root = document.documentElement
@@ -26,6 +29,18 @@ export function Settings() {
     }
     localStorage.setItem("theme", theme)
   }, [theme])
+
+  useEffect(() => {
+    const checkAutostart = async () => {
+      try {
+        const enabled = await autostartService.isEnabled()
+        setAutostartEnabled(enabled)
+      } catch (error) {
+        console.error("检查开机自启状态失败:", error)
+      }
+    }
+    checkAutostart()
+  }, [])
 
   const handleRedownloadFrpc = async () => {
     if (isDownloading) return
@@ -72,6 +87,26 @@ export function Settings() {
     }
   }
 
+  const handleToggleAutostart = async (enabled: boolean) => {
+    if (autostartLoading) return
+
+    setAutostartLoading(true)
+    try {
+      await autostartService.setEnabled(enabled)
+      setAutostartEnabled(enabled)
+      toast.success(enabled ? "已启用开机自启" : "已禁用开机自启", {
+        duration: 2000,
+      })
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      toast.error(`设置失败: ${errorMsg}`, {
+        duration: 3000,
+      })
+    } finally {
+      setAutostartLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-medium text-foreground">设置</h1>
@@ -104,6 +139,34 @@ export function Settings() {
               深色
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="border border-border/60 rounded-lg p-4 bg-card">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-foreground text-sm">开机自启</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              系统启动时自动运行应用
+            </p>
+          </div>
+          <button
+            onClick={() => handleToggleAutostart(!autostartEnabled)}
+            disabled={autostartLoading}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              autostartEnabled
+                ? "bg-foreground"
+                : "bg-muted"
+            } ${autostartLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            role="switch"
+            aria-checked={autostartEnabled}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                autostartEnabled ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
         </div>
       </div>
 
