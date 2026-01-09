@@ -114,23 +114,27 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
       const url = endpoint.startsWith("/")
         ? `${API_BASE_URL}${endpoint}`
         : `${API_BASE_URL}/${endpoint}`;
-      
+
       const bypassProxy = getBypassProxy();
-      
+
       // 在 Tauri 环境中，如果启用绕过代理，使用 Tauri 命令
-      if (typeof window !== "undefined" && "__TAURI__" in window && bypassProxy) {
+      if (
+        typeof window !== "undefined" &&
+        "__TAURI__" in window &&
+        bypassProxy
+      ) {
         const { invoke } = await import("@tauri-apps/api/core");
         const method = (options?.method ?? "GET").toUpperCase();
         const headers: Record<string, string> = {};
-        
+
         if (headersObj) {
           Object.entries(headersObj).forEach(([k, v]) => {
             headers[k] = v;
           });
         }
-        
+
         const body = options?.body ? String(options.body) : undefined;
-        
+
         const responseText = await invoke<string>("http_request", {
           options: {
             url,
@@ -140,7 +144,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
             bypass_proxy: true,
           },
         });
-        
+
         const data = JSON.parse(responseText) as ApiResponse<T>;
         if (data?.code === 200) {
           return data.data as T;

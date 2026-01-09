@@ -32,28 +32,30 @@ function App() {
     const stored = localStorage.getItem("backgroundBlur");
     return stored ? parseInt(stored, 10) : 4;
   });
-  
+
   const getInitialTheme = (): string => {
     if (typeof window === "undefined") return "light";
     const followSystem = localStorage.getItem("themeFollowSystem") !== "false";
     let initialTheme: string;
     if (followSystem) {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
       initialTheme = prefersDark ? "dark" : "light";
     } else {
       initialTheme = localStorage.getItem("theme") || "light";
     }
-    
+
     const root = document.documentElement;
     if (initialTheme === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
-    
+
     return initialTheme;
   };
-  
+
   const [theme, setTheme] = useState<string>(() => getInitialTheme());
 
   useEffect(() => {
@@ -74,11 +76,13 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-
     const handleThemeChange = () => {
-      const followSystem = localStorage.getItem("themeFollowSystem") !== "false";
+      const followSystem =
+        localStorage.getItem("themeFollowSystem") !== "false";
       if (followSystem) {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
         setTheme(prefersDark ? "dark" : "light");
       } else {
         const currentTheme = localStorage.getItem("theme") || "light";
@@ -130,12 +134,15 @@ function App() {
       }
     };
     window.addEventListener("storage", handleStorageChange);
-    
+
     const handleBackgroundImageChange = () => {
       const bg = localStorage.getItem("backgroundImage");
       setBackgroundImage(bg);
     };
-    window.addEventListener("backgroundImageChanged", handleBackgroundImageChange);
+    window.addEventListener(
+      "backgroundImageChanged",
+      handleBackgroundImageChange,
+    );
 
     const handleBackgroundOverlayChange = () => {
       const opacity = localStorage.getItem("backgroundOverlayOpacity");
@@ -147,12 +154,21 @@ function App() {
         setBlur(parseInt(blurValue, 10));
       }
     };
-    window.addEventListener("backgroundOverlayChanged", handleBackgroundOverlayChange);
+    window.addEventListener(
+      "backgroundOverlayChanged",
+      handleBackgroundOverlayChange,
+    );
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("backgroundImageChanged", handleBackgroundImageChange);
-      window.removeEventListener("backgroundOverlayChanged", handleBackgroundOverlayChange);
+      window.removeEventListener(
+        "backgroundImageChanged",
+        handleBackgroundImageChange,
+      );
+      window.removeEventListener(
+        "backgroundOverlayChanged",
+        handleBackgroundOverlayChange,
+      );
     };
   }, []);
 
@@ -317,10 +333,13 @@ function App() {
   };
 
   const getBackgroundColorWithOpacity = (opacity: number): string => {
-    if (typeof window === "undefined") return `rgba(246, 247, 249, ${opacity / 100})`;
+    if (typeof window === "undefined")
+      return `rgba(246, 247, 249, ${opacity / 100})`;
     const root = document.documentElement;
-    const bgColor = getComputedStyle(root).getPropertyValue("--background").trim();
-    
+    const bgColor = getComputedStyle(root)
+      .getPropertyValue("--background")
+      .trim();
+
     if (bgColor.startsWith("#")) {
       const hex = bgColor.slice(1);
       const r = parseInt(hex.slice(0, 2), 16);
@@ -328,12 +347,12 @@ function App() {
       const b = parseInt(hex.slice(4, 6), 16);
       return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
     }
-    
+
     const rgbMatch = bgColor.match(/\d+/g);
     if (rgbMatch && rgbMatch.length >= 3) {
       return `rgba(${rgbMatch[0]}, ${rgbMatch[1]}, ${rgbMatch[2]}, ${opacity / 100})`;
     }
-    
+
     return `rgba(246, 247, 249, ${opacity / 100})`;
   };
 
@@ -360,12 +379,15 @@ function App() {
   useEffect(() => {
     if (backgroundImage) {
       const updateOverlayColor = () => {
-        const overlayElement = document.querySelector(".background-overlay") as HTMLElement;
+        const overlayElement = document.querySelector(
+          ".background-overlay",
+        ) as HTMLElement;
         if (overlayElement) {
-          overlayElement.style.backgroundColor = getBackgroundColorWithOpacity(overlayOpacity);
+          overlayElement.style.backgroundColor =
+            getBackgroundColorWithOpacity(overlayOpacity);
         }
       };
-      
+
       requestAnimationFrame(() => {
         requestAnimationFrame(updateOverlayColor);
       });
@@ -377,7 +399,10 @@ function App() {
       className="flex h-screen overflow-hidden text-foreground"
       style={backgroundStyle}
     >
-      <div className="absolute inset-0 background-overlay" style={overlayStyle} />
+      <div
+        className="absolute inset-0 background-overlay"
+        style={overlayStyle}
+      />
       <div className="relative flex w-full h-full">
         <Sidebar
           activeTab={activeTab}

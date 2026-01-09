@@ -13,12 +13,7 @@ import {
 } from "../ui/item";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
-import {
-  Palette,
-  Network,
-  Settings2,
-  Sparkles,
-} from "lucide-react";
+import { Palette, Network, Settings2, Sparkles } from "lucide-react";
 
 type ThemeMode = "light" | "dark";
 
@@ -32,7 +27,9 @@ const getInitialTheme = (): ThemeMode => {
   if (typeof window === "undefined") return "light";
   const followSystem = getInitialFollowSystem();
   if (followSystem) {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
     return prefersDark ? "dark" : "light";
   }
   const stored = localStorage.getItem("theme") as ThemeMode | null;
@@ -112,7 +109,9 @@ export function Settings() {
       if (stored === "light" || stored === "dark") {
         setTheme(stored);
       } else {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
         setTheme(prefersDark ? "dark" : "light");
       }
     }
@@ -328,12 +327,12 @@ export function Settings() {
       if (selected && typeof selected === "string") {
         const fileData = await readFile(selected);
         const uint8Array = new Uint8Array(fileData);
-        
+
         let binaryString = "";
         for (let i = 0; i < uint8Array.length; i++) {
           binaryString += String.fromCharCode(uint8Array[i]);
         }
-        
+
         const base64 = btoa(binaryString);
         const mimeType = getMimeType(selected);
         const dataUrl = `data:${mimeType};base64,${base64}`;
@@ -387,9 +386,12 @@ export function Settings() {
             <span>外观</span>
           </div>
           <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
-            <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+            <Item
+              variant="outline"
+              className="border-0 border-b border-border/60 last:border-0"
+            >
               <ItemContent>
-                <ItemTitle>跟随系统</ItemTitle>
+                <ItemTitle>跟随系统主题</ItemTitle>
                 <ItemDescription className="text-xs">
                   自动跟随系统主题设置
                 </ItemDescription>
@@ -413,7 +415,10 @@ export function Settings() {
             </Item>
 
             {!followSystem && (
-              <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+              <Item
+                variant="outline"
+                className="border-0 border-b border-border/60 last:border-0"
+              >
                 <ItemContent>
                   <ItemTitle>主题</ItemTitle>
                   <ItemDescription className="text-xs">
@@ -484,7 +489,10 @@ export function Settings() {
 
             {backgroundImage && (
               <>
-                <Item variant="outline" className="border-0 border-t border-border/60">
+                <Item
+                  variant="outline"
+                  className="border-0 border-t border-border/60"
+                >
                   <ItemContent>
                     <ItemTitle>遮罩透明度</ItemTitle>
                     <ItemDescription className="text-xs">
@@ -585,7 +593,10 @@ export function Settings() {
             <span>系统</span>
           </div>
           <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
-            <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+            <Item
+              variant="outline"
+              className="border-0 border-b border-border/60 last:border-0"
+            >
               <ItemContent>
                 <ItemTitle>开机自启</ItemTitle>
                 <ItemDescription className="text-xs">
@@ -645,7 +656,10 @@ export function Settings() {
             <span>更新与下载</span>
           </div>
           <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
-            <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+            <Item
+              variant="outline"
+              className="border-0 border-b border-border/60 last:border-0"
+            >
               <ItemContent>
                 <ItemTitle>应用更新</ItemTitle>
                 <ItemDescription className="text-xs">
