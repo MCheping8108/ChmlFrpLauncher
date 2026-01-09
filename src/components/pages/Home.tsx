@@ -669,7 +669,7 @@ export function Home({ user, onUserChange }: HomeProps) {
           asChild
           className="border border-border/60 rounded-lg p-5 bg-card md:col-span-3"
         >
-          <a href="#" target="_blank" rel="noopener noreferrer">
+          <a href="https://wj.qq.com/s2/25483094/5318/" target="_blank" rel="noopener noreferrer">
             <ItemContent>
               <ItemTitle>意见征集</ItemTitle>
               <ItemDescription className="text-xs">
