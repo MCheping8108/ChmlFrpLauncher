@@ -446,14 +446,14 @@ export function Home({ user, onUserChange }: HomeProps) {
             </h1>
           </div>
           <div className="flex flex-wrap gap-2 relative">
-            {!signInInfo?.is_signed_in_today && (
+            {/* {!signInInfo?.is_signed_in_today && (
               <button
                 className="px-3 py-2 text-xs rounded bg-foreground text-background font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!userInfo}
               >
                 签到
               </button>
-            )}
+            )} */}
             <div
               className="relative"
               onMouseEnter={handleMouseEnter}
