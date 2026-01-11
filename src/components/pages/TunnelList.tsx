@@ -2,7 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { fetchTunnels, type Tunnel, getStoredUser } from "@/services/api";
+import {
+  fetchTunnels,
+  type Tunnel,
+  getStoredUser,
+  offlineTunnel,
+} from "@/services/api";
 import { frpcManager, type LogMessage } from "@/services/frpcManager";
 import { logStore } from "@/services/logStore";
 
@@ -216,27 +221,11 @@ export function TunnelList() {
       }
 
       try {
-        const formData = new URLSearchParams();
-        formData.append("tunnel_name", cleanedTunnelName);
-        
         console.log("调用下线隧道API", { tunnelId, tunnelName: cleanedTunnelName });
         
-        const response = await fetch("https://cf-v2.uapis.cn/offline_tunnel", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            authorization: user.usertoken,
-          },
-          body: formData.toString(),
-        });
+        await offlineTunnel(cleanedTunnelName, user.usertoken);
         
-        if (!response.ok) {
-          throw new Error(`HTTP错误: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.code === 200 && result.state === "success") {
-          await new Promise((resolve) => setTimeout(resolve, 8000));
+        await new Promise((resolve) => setTimeout(resolve, 8000));
 
           const tunnel = tunnels.find((t) => t.id === tunnelId);
           if (tunnel) {
@@ -321,9 +310,6 @@ export function TunnelList() {
               }
             }, 20000);
           }
-        } else {
-          throw new Error(result.msg || "下线隧道失败");
-        }
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "自动修复失败";
