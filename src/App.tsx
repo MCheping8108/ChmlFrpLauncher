@@ -19,6 +19,7 @@ function App() {
   const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
   const downloadToastRef = useRef<string | number | null>(null);
   const isDownloadingRef = useRef(false);
+  const appContainerRef = useRef<HTMLDivElement>(null);
   const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const [showTitleBar, setShowTitleBar] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -386,17 +387,21 @@ function App() {
     return `rgba(246, 247, 249, ${opacity / 100})`;
   };
 
-  const backgroundStyle = backgroundImage
-    ? {
+  const backgroundStyle = useMemo(() => {
+    if (backgroundImage) {
+      return {
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed",
-      }
-    : {
-        backgroundColor: getBackgroundColorWithOpacity(100),
       };
+    }
+    return {
+      backgroundColor: getBackgroundColorWithOpacity(100),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backgroundImage, theme]);
 
   const overlayStyle = useMemo(() => {
     if (!backgroundImage) {
@@ -412,8 +417,10 @@ function App() {
   }, [backgroundImage, overlayOpacity, blur, theme]);
 
   useEffect(() => {
-    if (backgroundImage) {
-      const updateOverlayColor = () => {
+    // 当主题变化时，延迟更新背景色以确保 CSS 变量已更新
+    const updateBackgroundColors = () => {
+      // 更新覆盖层颜色（如果有背景图）
+      if (backgroundImage) {
         const overlayElement = document.querySelector(
           ".background-overlay",
         ) as HTMLElement;
@@ -421,16 +428,23 @@ function App() {
           overlayElement.style.backgroundColor =
             getBackgroundColorWithOpacity(overlayOpacity);
         }
-      };
+      }
+      
+      // 更新主背景色（如果没有背景图）
+      if (!backgroundImage && appContainerRef.current) {
+        appContainerRef.current.style.backgroundColor =
+          getBackgroundColorWithOpacity(100);
+      }
+    };
 
-      requestAnimationFrame(() => {
-        requestAnimationFrame(updateOverlayColor);
-      });
-    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(updateBackgroundColors);
+    });
   }, [theme, overlayOpacity, backgroundImage]);
 
   return (
     <div
+      ref={appContainerRef}
       className="flex flex-col h-screen overflow-hidden text-foreground rounded-[12px]"
       style={{
         ...backgroundStyle,
