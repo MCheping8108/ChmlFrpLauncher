@@ -63,6 +63,20 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // 禁用右键菜单
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, []);
+
+  useEffect(() => {
     const applyThemeToDOM = (themeValue: string) => {
       const root = document.documentElement;
       if (themeValue === "dark") {
@@ -186,11 +200,6 @@ function App() {
               <div className="text-sm font-medium">
                 发现新版本: {result.version}
               </div>
-              {result.body && (
-                <div className="text-xs text-muted-foreground max-w-md whitespace-pre-wrap">
-                  {result.body}
-                </div>
-              )}
               <div className="text-xs text-muted-foreground mt-1">
                 更新将在后台下载，完成后会提示您安装
               </div>

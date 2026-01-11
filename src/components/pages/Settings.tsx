@@ -255,11 +255,6 @@ export function Settings() {
             <div className="text-sm font-medium">
               发现新版本: {result.version}
             </div>
-            {result.body && (
-              <div className="text-xs text-muted-foreground max-w-md whitespace-pre-wrap">
-                {result.body}
-              </div>
-            )}
             <div className="text-xs text-muted-foreground mt-1">
               更新将在后台下载，完成后会提示您安装
             </div>
