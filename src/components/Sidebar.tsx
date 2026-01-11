@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   Home as HomeIcon,
@@ -31,6 +31,25 @@ export function Sidebar({
   user,
   onUserChange,
 }: SidebarProps) {
+  const [showTitleBar, setShowTitleBar] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("showTitleBar");
+    // 如果从未设置过，默认返回 false（关闭）
+    if (stored === null) return false;
+    return stored === "true";
+  });
+
+  useEffect(() => {
+    const handleTitleBarVisibilityChange = () => {
+      const stored = localStorage.getItem("showTitleBar");
+      setShowTitleBar(stored !== "false");
+    };
+
+    window.addEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    return () => {
+      window.removeEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    };
+  }, []);
   const [loginOpen, setLoginOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -78,13 +97,23 @@ export function Sidebar({
     onTabChange(itemId);
   };
 
+  const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+
   return (
     <div className="relative w-60 border-r border-sidebar-border/40 bg-sidebar overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-foreground/[0.02] via-transparent to-foreground/[0.01] pointer-events-none" />
 
       <div className="relative flex flex-col h-full">
-        {/* Logo 区域 */}
-        <div className="px-5 pt-6 pb-5">
+        {isMacOS && !showTitleBar ? (
+          <div
+            data-tauri-drag-region
+            className="h-12 flex-shrink-0 flex items-start pt-3 pl-5"
+          />
+        ) : null}
+        <div 
+          className={cn("px-5 pb-5", isMacOS && !showTitleBar ? "pt-2" : "pt-6")}
+          {...(isMacOS && !showTitleBar && { "data-tauri-drag-region": true })}
+        >
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-foreground to-foreground/80 flex items-center justify-center shadow-sm">
               <span className="text-background font-bold text-sm">CF</span>

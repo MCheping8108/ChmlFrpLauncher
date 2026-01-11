@@ -60,7 +60,16 @@ const getInitialBypassProxy = (): boolean => {
   return stored !== "false";
 };
 
+const getInitialShowTitleBar = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("showTitleBar");
+  // 如果从未设置过，默认返回 false（关闭）
+  if (stored === null) return false;
+  return stored === "true";
+};
+
 export function Settings() {
+  const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const [followSystem, setFollowSystem] = useState<boolean>(() =>
     getInitialFollowSystem(),
   );
@@ -83,6 +92,9 @@ export function Settings() {
   const [blur, setBlur] = useState<number>(() => getInitialBackgroundBlur());
   const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
     getInitialBypassProxy(),
+  );
+  const [showTitleBar, setShowTitleBar] = useState<boolean>(() =>
+    getInitialShowTitleBar(),
   );
 
   useEffect(() => {
@@ -148,6 +160,11 @@ export function Settings() {
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
   }, [bypassProxy]);
+
+  useEffect(() => {
+    localStorage.setItem("showTitleBar", showTitleBar.toString());
+    window.dispatchEvent(new Event("titleBarVisibilityChanged"));
+  }, [showTitleBar]);
 
   useEffect(() => {
     const checkAutostart = async () => {
@@ -443,6 +460,37 @@ export function Settings() {
                       深色
                     </button>
                   </div>
+                </ItemActions>
+              </Item>
+            )}
+
+            {/* 只在 macOS 上显示顶部栏开关 */}
+            {isMacOS && (
+              <Item
+                variant="outline"
+                className="border-0 border-b border-border/60"
+              >
+                <ItemContent>
+                  <ItemTitle>显示顶部栏</ItemTitle>
+                  <ItemDescription className="text-xs">
+                    显示顶部标题栏（关闭时，三色按钮将显示在侧边栏顶部）
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <button
+                    onClick={() => setShowTitleBar(!showTitleBar)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      showTitleBar ? "bg-foreground" : "bg-muted"
+                    } cursor-pointer`}
+                    role="switch"
+                    aria-checked={showTitleBar}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                        showTitleBar ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
                 </ItemActions>
               </Item>
             )}

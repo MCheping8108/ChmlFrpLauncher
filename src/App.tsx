@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
+import { TitleBar } from "@/components/TitleBar";
 import { Home } from "@/components/pages/Home";
 import { TunnelList } from "@/components/pages/TunnelList";
 import { Logs } from "@/components/pages/Logs";
@@ -18,6 +19,14 @@ function App() {
   const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
   const downloadToastRef = useRef<string | number | null>(null);
   const isDownloadingRef = useRef(false);
+  const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const [showTitleBar, setShowTitleBar] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("showTitleBar");
+    // 如果从未设置过，默认返回 false（关闭）
+    if (stored === null) return false;
+    return stored === "true";
+  });
   const [backgroundImage, setBackgroundImage] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("backgroundImage");
@@ -60,6 +69,18 @@ function App() {
 
   useEffect(() => {
     logStore.startListening();
+  }, []);
+
+  useEffect(() => {
+    const handleTitleBarVisibilityChange = () => {
+      const stored = localStorage.getItem("showTitleBar");
+      setShowTitleBar(stored !== "false");
+    };
+
+    window.addEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    return () => {
+      window.removeEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -373,10 +394,15 @@ function App() {
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed",
       }
-    : {};
+    : {
+        backgroundColor: getBackgroundColorWithOpacity(100),
+      };
 
   const overlayStyle = useMemo(() => {
-    if (!backgroundImage) return {};
+    if (!backgroundImage) {
+      // 没有背景图片时，不显示覆盖层
+      return {};
+    }
     return {
       backgroundColor: getBackgroundColorWithOpacity(overlayOpacity),
       backdropFilter: `blur(${blur}px)`,
@@ -405,14 +431,26 @@ function App() {
 
   return (
     <div
-      className="flex h-screen overflow-hidden text-foreground"
-      style={backgroundStyle}
+      className="flex flex-col h-screen overflow-hidden text-foreground rounded-[12px]"
+      style={{
+        ...backgroundStyle,
+        borderRadius: '12px',
+        overflow: 'hidden',
+      }}
     >
       <div
-        className="absolute inset-0 background-overlay"
-        style={overlayStyle}
+        className="absolute inset-0 background-overlay rounded-[12px]"
+        style={{
+          ...overlayStyle,
+          borderRadius: '12px',
+        }}
       />
-      <div className="relative flex w-full h-full">
+      {(!isMacOS || showTitleBar) && (
+        <div className="relative z-50">
+          <TitleBar />
+        </div>
+      )}
+      <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]">
         <Sidebar
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -421,6 +459,12 @@ function App() {
         />
 
         <div className="flex-1 flex flex-col overflow-hidden relative">
+          {isMacOS && !showTitleBar ? (
+            <div
+              data-tauri-drag-region
+              className="absolute top-0 left-0 right-0 h-12 z-10"
+            />
+          ) : null}
           <div className="flex-1 overflow-auto p-6 md:p-8">
             <div className="max-w-6xl mx-auto w-full h-full">
               <div className="h-full flex flex-col">{renderContent()}</div>
