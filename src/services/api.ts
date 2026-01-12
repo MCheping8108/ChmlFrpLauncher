@@ -355,3 +355,27 @@ export async function offlineTunnel(
     throw new Error(data?.msg || "下线隧道失败");
   }
 }
+
+export async function deleteTunnel(
+  tunnelId: number,
+  token?: string,
+): Promise<void> {
+  const storedUser = getStoredUser();
+  const bearer = token ?? storedUser?.usertoken;
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录");
+  }
+
+  const data = await request<{ code: number; msg?: string }>(
+    `/delete_tunnel?tunnelid=${tunnelId}`,
+    {
+      headers: { authorization: bearer },
+    }
+  );
+
+  if (data?.code === 200) {
+    return;
+  }
+  throw new Error(data?.msg || "删除隧道失败");
+}

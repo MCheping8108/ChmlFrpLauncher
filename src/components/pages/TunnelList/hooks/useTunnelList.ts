@@ -94,7 +94,7 @@ export function useTunnelList() {
     error,
     runningTunnels,
     setRunningTunnels,
-    loadTunnels,
+    refreshTunnels: loadTunnels,
   };
 }
 

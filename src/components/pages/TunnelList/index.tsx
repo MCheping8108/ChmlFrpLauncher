@@ -11,6 +11,7 @@ export function TunnelList() {
     error,
     runningTunnels,
     setRunningTunnels,
+    refreshTunnels,
   } = useTunnelList();
 
   const {
@@ -61,6 +62,7 @@ export function TunnelList() {
                   isToggling={isToggling}
                   progress={progress}
                   onToggle={handleToggle}
+                  onRefresh={refreshTunnels}
                 />
               );
             })}
