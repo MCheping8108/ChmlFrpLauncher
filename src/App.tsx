@@ -11,6 +11,7 @@ import { frpcDownloader } from "@/services/frpcDownloader.ts";
 import { updateService } from "@/services/updateService";
 import { Progress } from "@/components/ui/progress";
 import { logStore } from "@/services/logStore";
+import { AntivirusWarningDialog } from "@/components/ui/AntivirusWarningDialog";
 
 let globalDownloadFlag = false;
 
@@ -21,10 +22,10 @@ function App() {
   const isDownloadingRef = useRef(false);
   const appContainerRef = useRef<HTMLDivElement>(null);
   const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const [showAntivirusWarning, setShowAntivirusWarning] = useState(false);
   const [showTitleBar, setShowTitleBar] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("showTitleBar");
-    // 如果从未设置过，默认返回 false（关闭）
     if (stored === null) return false;
     return stored === "true";
   });
@@ -313,6 +314,18 @@ function App() {
         if (downloadToastRef.current !== null) {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
+          
+          // 检测是否可能是 Windows 杀毒软件拦截
+          const isWindows = typeof navigator !== "undefined" && 
+            navigator.userAgent.toLowerCase().includes("windows");
+          const isPossibleAntivirusBlock = 
+            errorMsg.includes("写入文件失败") ||
+            errorMsg.includes("无法打开文件") ||
+            errorMsg.includes("permission denied") ||
+            errorMsg.includes("access denied") ||
+            errorMsg.includes("Permission denied") ||
+            errorMsg.includes("Access denied");
+
           toast.error(
             <div className="space-y-2">
               <div className="text-sm font-medium">frpc 客户端下载失败</div>
@@ -325,6 +338,13 @@ function App() {
             },
           );
           downloadToastRef.current = null;
+
+          // 如果是 Windows 系统且可能是杀毒软件拦截，显示友好提示
+          if (isWindows && isPossibleAntivirusBlock) {
+            setTimeout(() => {
+              setShowAntivirusWarning(true);
+            }, 500);
+          }
         }
 
         globalDownloadFlag = false;
@@ -443,50 +463,58 @@ function App() {
   }, [theme, overlayOpacity, backgroundImage]);
 
   return (
-    <div
-      ref={appContainerRef}
-      className="flex flex-col h-screen overflow-hidden text-foreground rounded-[12px]"
-      style={{
-        ...backgroundStyle,
-        borderRadius: '12px',
-        overflow: 'hidden',
-      }}
-    >
+    <>
       <div
-        className="absolute inset-0 background-overlay rounded-[12px]"
+        ref={appContainerRef}
+        className="flex flex-col h-screen overflow-hidden text-foreground rounded-[12px]"
         style={{
-          ...overlayStyle,
+          ...backgroundStyle,
           borderRadius: '12px',
+          overflow: 'hidden',
         }}
-      />
-      {(!isMacOS || showTitleBar) && (
-        <div className="relative z-50">
-          <TitleBar />
-        </div>
-      )}
-      <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]">
-        <Sidebar
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          user={user}
-          onUserChange={setUser}
+      >
+        <div
+          className="absolute inset-0 background-overlay rounded-[12px]"
+          style={{
+            ...overlayStyle,
+            borderRadius: '12px',
+          }}
         />
+        {(!isMacOS || showTitleBar) && (
+          <div className="relative z-50">
+            <TitleBar />
+          </div>
+        )}
+        <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]">
+          <Sidebar
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            user={user}
+            onUserChange={setUser}
+          />
 
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          {isMacOS && !showTitleBar ? (
-            <div
-              data-tauri-drag-region
-              className="absolute top-0 left-0 right-0 h-12 z-10"
-            />
-          ) : null}
-          <div className="flex-1 overflow-auto p-6 md:p-8">
-            <div className="max-w-6xl mx-auto w-full h-full">
-              <div className="h-full flex flex-col">{renderContent()}</div>
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            {isMacOS && !showTitleBar ? (
+              <div
+                data-tauri-drag-region
+                className="absolute top-0 left-0 right-0 h-12 z-10"
+              />
+            ) : null}
+            <div className="flex-1 overflow-auto p-6 md:p-8">
+              <div className="max-w-6xl mx-auto w-full h-full">
+                <div className="h-full flex flex-col">{renderContent()}</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <AntivirusWarningDialog
+        isOpen={showAntivirusWarning}
+        onClose={() => setShowAntivirusWarning(false)}
+        onConfirm={() => setActiveTab("settings")}
+      />
+    </>
   );
 }
 

@@ -145,6 +145,16 @@ pub async fn check_frpc_exists(app_handle: tauri::AppHandle) -> Result<bool, Str
 }
 
 #[tauri::command]
+pub async fn get_frpc_directory(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
+
+    Ok(app_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 pub async fn get_download_url() -> Result<String, String> {
     let info = get_download_info().await?;
     Ok(info.url)
@@ -214,7 +224,7 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         .write(true)
         .truncate(true)
         .open(&frpc_path)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("无法打开文件进行写入: {}", e))?;
 
     let mut downloaded: u64 = 0;
     let mut retry_count = 0;
@@ -286,8 +296,11 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
             match item {
                 Ok(chunk) => {
                     use std::io::Write;
-                    file.write_all(&chunk)
-                        .map_err(|e| format!("写入文件失败: {}", e))?;
+                    if let Err(e) = file.write_all(&chunk) {
+                        // 提供更详细的错误信息，帮助前端识别杀毒软件拦截
+                        let err_msg = format!("写入文件失败: {}。这可能是由于杀毒软件拦截，请将 frpc 目录添加到杀毒软件白名单", e);
+                        return Err(err_msg);
+                    }
 
                     let chunk_len = chunk.len() as u64;
                     downloaded += chunk_len;

@@ -47,6 +47,7 @@ pub fn run() {
         .manage(FrpcProcesses::new())
         .invoke_handler(tauri::generate_handler![
             commands::check_frpc_exists,
+            commands::get_frpc_directory,
             commands::get_download_url,
             commands::download_frpc,
             commands::start_frpc,
