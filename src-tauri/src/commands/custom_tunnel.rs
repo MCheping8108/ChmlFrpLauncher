@@ -1,4 +1,4 @@
-use crate::models::{FrpcProcesses, LogMessage};
+use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -184,6 +184,7 @@ pub async fn start_custom_tunnel(
     app_handle: tauri::AppHandle,
     tunnel_id: String,
     processes: State<'_, FrpcProcesses>,
+    guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
     eprintln!("[自定义隧道] 开始启动: {}", tunnel_id);
 
@@ -322,6 +323,13 @@ pub async fn start_custom_tunnel(
         procs.insert(tunnel_id_hash, child);
     }
 
+    let _ = crate::commands::process_guard::add_guarded_custom_tunnel(
+        tunnel_id_hash,
+        tunnel_id.clone(),
+        guard_state,
+    )
+    .await;
+
     Ok(format!("自定义隧道已启动 (PID: {})", pid))
 }
 
@@ -330,9 +338,17 @@ pub async fn start_custom_tunnel(
 pub async fn stop_custom_tunnel(
     tunnel_id: String,
     processes: State<'_, FrpcProcesses>,
+    guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
     let custom_tunnel_id = format!("custom_{}", tunnel_id);
     let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
+
+    let _ = crate::commands::process_guard::remove_guarded_process(
+        tunnel_id_hash,
+        guard_state,
+        true,
+    )
+    .await;
 
     let mut procs = processes
         .processes

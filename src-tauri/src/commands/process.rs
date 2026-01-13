@@ -1,4 +1,4 @@
-use crate::models::{FrpcProcesses, LogMessage};
+use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState};
 use crate::utils::sanitize_log;
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -15,10 +15,8 @@ pub async fn start_frpc(
     tunnel_id: i32,
     user_token: String,
     processes: State<'_, FrpcProcesses>,
+    guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
-    eprintln!("========================================");
-    eprintln!("[隧道 {}] 开始启动 frpc", tunnel_id);
-
     {
         let procs = processes.processes.lock().map_err(|e| {
             eprintln!("[隧道 {}] 获取进程锁失败: {}", tunnel_id, e);
@@ -193,12 +191,31 @@ pub async fn start_frpc(
     }
 
     eprintln!("[隧道 {}] frpc 启动完成", tunnel_id);
+    
+    let _ = crate::commands::process_guard::add_guarded_process(
+        tunnel_id,
+        user_token,
+        guard_state,
+    )
+    .await;
+    
     Ok(format!("frpc 已启动 (PID: {})", pid))
 }
 
 #[tauri::command]
-pub async fn stop_frpc(tunnel_id: i32, processes: State<'_, FrpcProcesses>) -> Result<String, String> {
+pub async fn stop_frpc(
+    tunnel_id: i32,
+    processes: State<'_, FrpcProcesses>,
+    guard_state: State<'_, ProcessGuardState>,
+) -> Result<String, String> {
     eprintln!("[隧道 {}] 请求停止进程", tunnel_id);
+    
+    let _ = crate::commands::process_guard::remove_guarded_process(
+        tunnel_id,
+        guard_state,
+        true,
+    )
+    .await;
 
     let mut procs = processes
         .processes

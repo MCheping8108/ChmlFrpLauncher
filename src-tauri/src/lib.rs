@@ -1,12 +1,8 @@
-// 核心模块
 mod models;
 mod utils;
-
-// 命令模块
 mod commands;
 
-// 导出模块供外部使用
-pub use models::FrpcProcesses;
+pub use models::{FrpcProcesses, ProcessGuardState};
 
 use tauri::{Manager, Emitter, menu::{MenuBuilder, MenuItemBuilder}, tray::{TrayIconBuilder, TrayIconEvent}};
 
@@ -19,7 +15,6 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            // 创建系统托盘菜单
             let show_item = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
             let menu = MenuBuilder::new(app)
@@ -28,7 +23,6 @@ pub fn run() {
                 .item(&quit_item)
                 .build()?;
 
-            // 创建系统托盘图标
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
@@ -61,7 +55,6 @@ pub fn run() {
                 })
                 .build(app)?;
             
-            // 监听窗口关闭请求事件
             if let Some(window) = app.get_webview_window("main") {
                 let window_clone = window.clone();
                 window.on_window_event(move |event| {
@@ -95,9 +88,14 @@ pub fn run() {
                         .build(),
                 )?;
             }
+            
+            let app_handle = app.handle().clone();
+            commands::process_guard::start_guard_monitor(app_handle);
+            
             Ok(())
         })
         .manage(FrpcProcesses::new())
+        .manage(ProcessGuardState::new())
         .invoke_handler(tauri::generate_handler![
             commands::check_frpc_exists,
             commands::get_frpc_directory,
@@ -120,7 +118,12 @@ pub fn run() {
             commands::delete_custom_tunnel,
             commands::start_custom_tunnel,
             commands::stop_custom_tunnel,
-            commands::is_custom_tunnel_running
+            commands::is_custom_tunnel_running,
+            commands::process_guard::set_process_guard_enabled,
+            commands::process_guard::get_process_guard_enabled,
+            commands::process_guard::add_guarded_process,
+            commands::process_guard::add_guarded_custom_tunnel,
+            commands::process_guard::remove_guarded_process
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

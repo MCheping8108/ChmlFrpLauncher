@@ -5,6 +5,7 @@ import { useAutostart } from "./hooks/useAutostart";
 import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
+import { useProcessGuard } from "./hooks/useProcessGuard";
 import { getInitialBypassProxy, getInitialShowTitleBar } from "./utils";
 import { AppearanceSection } from "./components/AppearanceSection";
 import { NetworkSection } from "./components/NetworkSection";
@@ -54,6 +55,12 @@ export function Settings() {
     closeToTrayEnabled,
     handleToggleCloseToTray,
   } = useCloseBehavior();
+
+  const {
+    guardEnabled,
+    guardLoading,
+    handleToggleGuard,
+  } = useProcessGuard();
 
   const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
     getInitialBypassProxy(),
@@ -109,6 +116,9 @@ export function Settings() {
           onToggleAutoCheckUpdate={handleToggleAutoCheckUpdate}
           closeToTrayEnabled={closeToTrayEnabled}
           onToggleCloseToTray={handleToggleCloseToTray}
+          guardEnabled={guardEnabled}
+          guardLoading={guardLoading}
+          onToggleGuard={handleToggleGuard}
         />
 
         <UpdateSection
