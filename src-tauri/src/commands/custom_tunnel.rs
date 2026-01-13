@@ -32,9 +32,7 @@ pub async fn save_custom_tunnel(
     _tunnel_name: String,
     config_content: String,
 ) -> Result<CustomTunnel, String> {
-    eprintln!("[自定义隧道] 开始保存自定义隧道");
-
-    // 首先解析配置文件获取隧道名
+    // 解析配置文件获取隧道名
     let parsed_info = parse_ini_config(&config_content)?;
     
     if parsed_info.tunnel_names.is_empty() {
@@ -43,8 +41,6 @@ pub async fn save_custom_tunnel(
 
     let tunnel_name = parsed_info.tunnel_names[0].clone();
     
-    eprintln!("[自定义隧道] 从配置文件中获取到隧道名: {}", tunnel_name);
-
     // 验证隧道名称只包含安全字符
     if !tunnel_name
         .chars()
@@ -91,7 +87,6 @@ pub async fn save_custom_tunnel(
     // 保存自定义隧道列表
     save_custom_tunnel_list(&app_handle, &custom_tunnel)?;
 
-    eprintln!("[自定义隧道] 保存成功: {:?}", custom_tunnel);
     Ok(custom_tunnel)
 }
 
@@ -127,8 +122,6 @@ pub async fn delete_custom_tunnel(
     tunnel_id: String,
     processes: State<'_, FrpcProcesses>,
 ) -> Result<(), String> {
-    eprintln!("[自定义隧道] 开始删除: {}", tunnel_id);
-
     // 停止隧道（如果正在运行）
     let custom_tunnel_id = format!("custom_{}", tunnel_id);
     let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
@@ -186,8 +179,6 @@ pub async fn start_custom_tunnel(
     processes: State<'_, FrpcProcesses>,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
-    eprintln!("[自定义隧道] 开始启动: {}", tunnel_id);
-
     // 生成一个唯一的进程ID
     let custom_tunnel_id = format!("custom_{}", tunnel_id);
     let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
@@ -235,8 +226,6 @@ pub async fn start_custom_tunnel(
         return Err("配置文件不存在".to_string());
     }
 
-    eprintln!("[自定义隧道] 配置文件: {:?}", config_path);
-
     // 启动 frpc 进程
     let mut cmd = StdCommand::new(&frpc_path);
     cmd.current_dir(&app_dir)
@@ -256,7 +245,6 @@ pub async fn start_custom_tunnel(
         .map_err(|e| format!("启动 frpc 失败: {}", e))?;
 
     let pid = child.id();
-    eprintln!("[自定义隧道] 进程已启动，PID: {}", pid);
 
     // 发送启动日志
     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();

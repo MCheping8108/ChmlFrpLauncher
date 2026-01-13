@@ -50,14 +50,7 @@ pub async fn add_guarded_process(
     user_token: String,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<(), String> {
-    let is_enabled = guard_state.enabled.load(Ordering::SeqCst);
-    eprintln!("[守护进程] 尝试添加API隧道 {} 到守护列表, 守护进程状态: {}", 
-        tunnel_id, 
-        if is_enabled { "启用" } else { "禁用" }
-    );
-    
-    if !is_enabled {
-        eprintln!("[守护进程] 守护进程未启用，不添加隧道 {}", tunnel_id);
+    if !guard_state.enabled.load(Ordering::SeqCst) {
         return Ok(());
     }
     
@@ -78,7 +71,6 @@ pub async fn add_guarded_process(
         stopped.remove(&tunnel_id);
     }
     
-    eprintln!("[守护进程] 成功添加API隧道 {} 到守护列表，当前守护 {} 个隧道", tunnel_id, guarded.len());
     Ok(())
 }
 
@@ -88,15 +80,7 @@ pub async fn add_guarded_custom_tunnel(
     original_id: String,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<(), String> {
-    let is_enabled = guard_state.enabled.load(Ordering::SeqCst);
-    eprintln!("[守护进程] 尝试添加自定义隧道 {} (hash: {}) 到守护列表, 守护进程状态: {}", 
-        original_id,
-        tunnel_id_hash,
-        if is_enabled { "启用" } else { "禁用" }
-    );
-    
-    if !is_enabled {
-        eprintln!("[守护进程] 守护进程未启用，不添加隧道 {}", original_id);
+    if !guard_state.enabled.load(Ordering::SeqCst) {
         return Ok(());
     }
     
@@ -109,7 +93,7 @@ pub async fn add_guarded_custom_tunnel(
         tunnel_id_hash,
         ProcessGuardInfo {
             tunnel_id: tunnel_id_hash,
-            tunnel_type: TunnelType::Custom { original_id: original_id.clone() },
+            tunnel_type: TunnelType::Custom { original_id },
         },
     );
     
@@ -117,7 +101,6 @@ pub async fn add_guarded_custom_tunnel(
         stopped.remove(&tunnel_id_hash);
     }
     
-    eprintln!("[守护进程] 成功添加自定义隧道 {} 到守护列表，当前守护 {} 个隧道", original_id, guarded.len());
     Ok(())
 }
 
@@ -140,7 +123,6 @@ pub async fn remove_guarded_process(
         }
     }
     
-    eprintln!("[守护进程] 从守护列表移除隧道 {}", tunnel_id);
     Ok(())
 }
 
@@ -191,7 +173,6 @@ pub async fn check_log_and_stop_guard(
 
 pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
     thread::spawn(move || {
-        eprintln!("[守护进程] 监控线程已启动");
         let mut last_log_time = std::time::Instant::now();
         
         loop {
@@ -203,7 +184,6 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
             let is_enabled = guard_state.enabled.load(Ordering::SeqCst);
             
             if last_log_time.elapsed().as_secs() >= 30 {
-                eprintln!("[守护进程] 状态: {}", if is_enabled { "启用" } else { "禁用" });
                 last_log_time = std::time::Instant::now();
             }
             
@@ -213,13 +193,7 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
             
             let guarded_list: Vec<ProcessGuardInfo> = {
                 match guard_state.guarded_processes.lock() {
-                    Ok(guarded) => {
-                        let list: Vec<_> = guarded.values().cloned().collect();
-                        if !list.is_empty() {
-                            eprintln!("[守护进程] 正在监控 {} 个隧道", list.len());
-                        }
-                        list
-                    },
+                    Ok(guarded) => guarded.values().cloned().collect(),
                     Err(_) => continue,
                 }
             };
@@ -266,8 +240,6 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                 };
                 
                 if !is_running {
-                    eprintln!("[守护进程] 检测到隧道 {} 进程离线，准备自动重启", tunnel_id);
-                    
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
                     let _ = app_handle.emit(
                         "frpc-log",
@@ -282,8 +254,6 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                     let tunnel_type = info.tunnel_type.clone();
                     
                     thread::spawn(move || {
-                        eprintln!("[守护进程] 开始重启隧道 {}", tunnel_id);
-                        
                         thread::sleep(Duration::from_secs(1));
                         
                         let processes_state = app_clone.state::<FrpcProcesses>();
@@ -291,7 +261,6 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                         
                         let result = match tunnel_type {
                             TunnelType::Api { user_token } => {
-                                eprintln!("[守护进程] 重启API隧道 {}", tunnel_id);
                                 tauri::async_runtime::block_on(async {
                                     crate::commands::process::start_frpc(
                                         app_clone.clone(),
@@ -304,7 +273,6 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                                 })
                             }
                             TunnelType::Custom { original_id } => {
-                                eprintln!("[守护进程] 重启自定义隧道 {} (原始ID: {})", tunnel_id, original_id);
                                 tauri::async_runtime::block_on(async {
                                     crate::commands::custom_tunnel::start_custom_tunnel(
                                         app_clone.clone(),
@@ -319,8 +287,6 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                         
                         match result {
                             Ok(_) => {
-                                eprintln!("[守护进程] 隧道 {} 重启成功", tunnel_id);
-                                
                                 let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
                                 let _ = app_clone.emit(
                                     "tunnel-auto-restarted",
@@ -331,7 +297,6 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                                 );
                             }
                             Err(e) => {
-                                eprintln!("[守护进程] 隧道 {} 重启失败: {}", tunnel_id, e);
                                 let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
                                 let _ = app_clone.emit(
                                     "frpc-log",
