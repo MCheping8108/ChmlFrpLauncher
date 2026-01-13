@@ -114,7 +114,13 @@ pub fn run() {
             commands::hide_window,
             commands::show_window,
             commands::quit_app,
-            commands::ping_host
+            commands::ping_host,
+            commands::save_custom_tunnel,
+            commands::get_custom_tunnels,
+            commands::delete_custom_tunnel,
+            commands::start_custom_tunnel,
+            commands::stop_custom_tunnel,
+            commands::is_custom_tunnel_running
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

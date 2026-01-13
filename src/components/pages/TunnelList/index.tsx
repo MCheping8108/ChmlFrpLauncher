@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useTunnelList } from "./hooks/useTunnelList";
@@ -19,12 +19,18 @@ export function TunnelList() {
     refreshTunnels,
   } = useTunnelList();
 
+  // 只将API隧道传给useTunnelProgress
+  const apiTunnels = useMemo(
+    () => tunnels.filter((t) => t.type === "api").map((t) => t.data),
+    [tunnels]
+  );
+
   const {
     tunnelProgress,
     setTunnelProgress,
     timeoutRefs,
     successTimeoutRefs,
-  } = useTunnelProgress(tunnels, runningTunnels, setRunningTunnels);
+  } = useTunnelProgress(apiTunnels, runningTunnels, setRunningTunnels);
 
   const { togglingTunnels, handleToggle } = useTunnelToggle({
     setTunnelProgress,
@@ -65,12 +71,17 @@ export function TunnelList() {
         <ScrollArea className="flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {tunnels.map((tunnel) => {
-              const isRunning = runningTunnels.has(tunnel.id);
-              const isToggling = togglingTunnels.has(tunnel.id);
-              const progress = tunnelProgress.get(tunnel.id);
+              const tunnelKey = tunnel.type === "api" 
+                ? `api_${tunnel.data.id}` 
+                : `custom_${tunnel.data.id}`;
+              const isRunning = runningTunnels.has(tunnelKey);
+              const isToggling = togglingTunnels.has(tunnelKey);
+              const progress = tunnel.type === "api" 
+                ? tunnelProgress.get(tunnelKey) 
+                : undefined;
               return (
                 <TunnelCard
-                  key={tunnel.id}
+                  key={tunnelKey}
                   tunnel={tunnel}
                   isRunning={isRunning}
                   isToggling={isToggling}

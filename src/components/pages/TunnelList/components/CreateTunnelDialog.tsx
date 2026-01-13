@@ -23,6 +23,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   fetchNodes,
@@ -32,6 +33,7 @@ import {
   type Node,
   type NodeInfo,
 } from "@/services/api";
+import { CustomTunnelDialog } from "./CustomTunnelDialog";
 
 interface CreateTunnelDialogProps {
   open: boolean;
@@ -53,6 +55,7 @@ export function CreateTunnelDialog({
   onOpenChange,
   onSuccess,
 }: CreateTunnelDialogProps) {
+  const [tunnelType, setTunnelType] = useState<"standard" | "custom">("standard");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -243,6 +246,7 @@ export function CreateTunnelDialog({
   };
 
   const handleClose = () => {
+    setTunnelType("standard");
     setStep(1);
     setSelectedNode(null);
     setNodeInfo(null);
@@ -282,6 +286,17 @@ export function CreateTunnelDialog({
   const isFreeUser = user?.usergroup === "免费用户";
   const defaultOpenValues = isFreeUser ? ["user"] : ["vip", "user"];
 
+  // 如果是自定义隧道模式，显示自定义隧道对话框
+  if (tunnelType === "custom") {
+    return (
+      <CustomTunnelDialog
+        open={open}
+        onOpenChange={handleClose}
+        onSuccess={onSuccess}
+      />
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
@@ -292,9 +307,9 @@ export function CreateTunnelDialog({
       >
         <DialogHeader className="shrink-0 gap-1.5">
           <DialogTitle className="text-xl animate-in fade-in duration-300" key={`title-${step}`}>
-            {step === 1 && "选择节点"}
+            {step === 1 && "新建隧道"}
             {step === 2 && "节点详情"}
-            {step === 3 && "新建隧道"}
+            {step === 3 && "配置隧道"}
           </DialogTitle>
           {step === 2 && selectedNode && (
             <DialogDescription className="text-sm animate-in fade-in duration-300" key="desc-step2">
@@ -309,8 +324,23 @@ export function CreateTunnelDialog({
         </DialogHeader>
 
         {step === 1 ? (
-          // 第一步：选择节点
+          // 第一步：选择隧道类型和节点
           <div key="step1" className="flex-1 flex flex-col min-h-0 py-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Tabs
+              value={tunnelType}
+              onValueChange={(value) => setTunnelType(value as "standard" | "custom")}
+              className="mb-4"
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="standard" className="flex-1">
+                  标准隧道
+                </TabsTrigger>
+                <TabsTrigger value="custom" className="flex-1">
+                  自定义隧道
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
             <div className="flex-1 min-h-0 overflow-y-auto pr-4">
               <Accordion 
                 type="multiple" 

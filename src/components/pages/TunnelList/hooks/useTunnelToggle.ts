@@ -1,22 +1,21 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
-import type { Tunnel } from "@/services/api";
 import { getStoredUser } from "@/services/api";
 import { frpcManager } from "@/services/frpcManager";
-import type { TunnelProgress } from "../types";
-import { tunnelProgressCache } from "../cache";
+import { customTunnelService } from "@/services/customTunnelService";
+import type { TunnelProgress, UnifiedTunnel } from "../types";
 
 interface UseTunnelToggleProps {
   setTunnelProgress: Dispatch<
-    SetStateAction<Map<number, TunnelProgress>>
+    SetStateAction<Map<string, TunnelProgress>>
   >;
-  setRunningTunnels: Dispatch<SetStateAction<Set<number>>>;
+  setRunningTunnels: Dispatch<SetStateAction<Set<string>>>;
   timeoutRefs: React.MutableRefObject<
-    Map<number, ReturnType<typeof setTimeout>>
+    Map<string, ReturnType<typeof setTimeout>>
   >;
   successTimeoutRefs: React.MutableRefObject<
-    Map<number, ReturnType<typeof setTimeout>>
+    Map<string, ReturnType<typeof setTimeout>>
   >;
 }
 
@@ -26,22 +25,32 @@ export function useTunnelToggle({
   timeoutRefs,
   successTimeoutRefs,
 }: UseTunnelToggleProps) {
-  const [togglingTunnels, setTogglingTunnels] = useState<Set<number>>(
+  const [togglingTunnels, setTogglingTunnels] = useState<Set<string>>(
     new Set(),
   );
 
-  const handleToggle = async (tunnel: Tunnel, enabled: boolean) => {
-    const user = getStoredUser();
-    if (!user?.usertoken) {
-      toast.error("未找到用户令牌，请重新登录");
+  const handleToggle = async (tunnel: UnifiedTunnel, enabled: boolean) => {
+    const tunnelKey = tunnel.type === "api" 
+      ? `api_${tunnel.data.id}` 
+      : `custom_${tunnel.data.id}`;
+    
+    const tunnelName = tunnel.type === "api" 
+      ? tunnel.data.name 
+      : tunnel.data.name;
+
+    if (tunnel.type === "api") {
+      const user = getStoredUser();
+      if (!user?.usertoken) {
+        toast.error("未找到用户令牌，请重新登录");
+        return;
+      }
+    }
+
+    if (togglingTunnels.has(tunnelKey)) {
       return;
     }
 
-    if (togglingTunnels.has(tunnel.id)) {
-      return;
-    }
-
-    setTogglingTunnels((prev) => new Set(prev).add(tunnel.id));
+    setTogglingTunnels((prev) => new Set(prev).add(tunnelKey));
 
     try {
       if (enabled) {
@@ -52,45 +61,53 @@ export function useTunnelToggle({
             isError: false,
             isSuccess: false,
           };
-          next.set(tunnel.id, resetProgress);
-          tunnelProgressCache.set(tunnel.id, resetProgress);
+          next.set(tunnelKey, resetProgress);
           return next;
         });
-        const message = await frpcManager.startTunnel(
-          tunnel.id,
-          user.usertoken,
-        );
-        toast.success(message || `隧道 ${tunnel.name} 已启动`);
-        setRunningTunnels((prev) => new Set(prev).add(tunnel.id));
+
+        let message: string;
+        if (tunnel.type === "api") {
+          const user = getStoredUser();
+          message = await frpcManager.startTunnel(
+            tunnel.data.id,
+            user!.usertoken!,
+          );
+        } else {
+          message = await customTunnelService.startCustomTunnel(tunnel.data.id);
+        }
+
+        toast.success(message || `隧道 ${tunnelName} 已启动`);
+        setRunningTunnels((prev) => new Set(prev).add(tunnelKey));
       } else {
-        const message = await frpcManager.stopTunnel(tunnel.id);
-        toast.success(message || `隧道 ${tunnel.name} 已停止`);
+        let message: string;
+        if (tunnel.type === "api") {
+          message = await frpcManager.stopTunnel(tunnel.data.id);
+        } else {
+          message = await customTunnelService.stopCustomTunnel(tunnel.data.id);
+        }
+
+        toast.success(message || `隧道 ${tunnelName} 已停止`);
         setRunningTunnels((prev) => {
           const next = new Set(prev);
-          next.delete(tunnel.id);
+          next.delete(tunnelKey);
           return next;
         });
         setTunnelProgress((prev) => {
           const next = new Map(prev);
-          next.set(tunnel.id, {
-            progress: 0,
-            isError: false,
-            isSuccess: false,
-          });
-          tunnelProgressCache.set(tunnel.id, {
+          next.set(tunnelKey, {
             progress: 0,
             isError: false,
             isSuccess: false,
           });
           return next;
         });
-        if (timeoutRefs.current.has(tunnel.id)) {
-          clearTimeout(timeoutRefs.current.get(tunnel.id)!);
-          timeoutRefs.current.delete(tunnel.id);
+        if (timeoutRefs.current.has(tunnelKey)) {
+          clearTimeout(timeoutRefs.current.get(tunnelKey)!);
+          timeoutRefs.current.delete(tunnelKey);
         }
-        if (successTimeoutRefs.current.has(tunnel.id)) {
-          clearTimeout(successTimeoutRefs.current.get(tunnel.id)!);
-          successTimeoutRefs.current.delete(tunnel.id);
+        if (successTimeoutRefs.current.has(tunnelKey)) {
+          clearTimeout(successTimeoutRefs.current.get(tunnelKey)!);
+          successTimeoutRefs.current.delete(tunnelKey);
         }
       }
     } catch (err) {
@@ -105,15 +122,14 @@ export function useTunnelToggle({
         };
         setTunnelProgress((prev) => {
           const next = new Map(prev);
-          next.set(tunnel.id, errorProgress);
+          next.set(tunnelKey, errorProgress);
           return next;
         });
-        tunnelProgressCache.set(tunnel.id, errorProgress);
       }
     } finally {
       setTogglingTunnels((prev) => {
         const next = new Set(prev);
-        next.delete(tunnel.id);
+        next.delete(tunnelKey);
         return next;
       });
     }

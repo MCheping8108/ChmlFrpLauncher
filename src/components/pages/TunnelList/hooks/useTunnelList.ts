@@ -1,46 +1,57 @@
 import { useState, useEffect } from "react";
 import { fetchTunnels, type Tunnel } from "@/services/api";
 import { frpcManager } from "@/services/frpcManager";
+import { customTunnelService } from "@/services/customTunnelService";
 import { tunnelListCache } from "../cache";
+import type { UnifiedTunnel } from "../types";
 
 export function useTunnelList() {
-  const [tunnels, setTunnels] = useState<Tunnel[]>(() => {
-    return tunnelListCache.tunnels;
+  const [tunnels, setTunnels] = useState<UnifiedTunnel[]>(() => {
+    // 将缓存的API隧道转换为统一格式
+    return tunnelListCache.tunnels.map((t) => ({ type: "api" as const, data: t }));
   });
   const [loading, setLoading] = useState(() => {
     return tunnelListCache.tunnels.length === 0;
   });
   const [error, setError] = useState("");
-  const [runningTunnels, setRunningTunnels] = useState<Set<number>>(new Set());
+  const [runningTunnels, setRunningTunnels] = useState<Set<string>>(new Set());
 
   const loadTunnels = async () => {
-    if (tunnelListCache.tunnels.length > 0) {
-      setTunnels(tunnelListCache.tunnels);
-      setLoading(false);
-
-      const running = new Set<number>();
-      for (const tunnel of tunnelListCache.tunnels) {
-        const isRunning = await frpcManager.isTunnelRunning(tunnel.id);
-        if (isRunning) {
-          running.add(tunnel.id);
-        }
-      }
-      setRunningTunnels(running);
-    } else {
-      setLoading(true);
-    }
-
+    setLoading(true);
     setError("");
-    try {
-      const data = await fetchTunnels();
-      setTunnels(data);
-      tunnelListCache.tunnels = data;
 
-      const running = new Set<number>();
-      for (const tunnel of data) {
-        const isRunning = await frpcManager.isTunnelRunning(tunnel.id);
-        if (isRunning) {
-          running.add(tunnel.id);
+    try {
+      // 加载API隧道和自定义隧道
+      const [apiTunnels, customTunnels] = await Promise.all([
+        fetchTunnels().catch(() => [] as Tunnel[]),
+        customTunnelService.getCustomTunnels().catch(() => []),
+      ]);
+
+      // 转换为统一格式
+      const allTunnels: UnifiedTunnel[] = [
+        ...apiTunnels.map((t) => ({ type: "api" as const, data: t })),
+        ...customTunnels.map((t) => ({ type: "custom" as const, data: t })),
+      ];
+
+      setTunnels(allTunnels);
+      tunnelListCache.tunnels = apiTunnels;
+
+      // 检查运行状态
+      const running = new Set<string>();
+      
+      for (const tunnel of allTunnels) {
+        if (tunnel.type === "api") {
+          const isRunning = await frpcManager.isTunnelRunning(tunnel.data.id);
+          if (isRunning) {
+            running.add(`api_${tunnel.data.id}`);
+          }
+        } else {
+          const isRunning = await customTunnelService.isCustomTunnelRunning(
+            tunnel.data.id
+          );
+          if (isRunning) {
+            running.add(`custom_${tunnel.data.id}`);
+          }
         }
       }
       setRunningTunnels(running);
@@ -51,11 +62,6 @@ export function useTunnelList() {
         message.includes("token") ||
         message.includes("令牌")
       ) {
-        tunnelListCache.tunnels = [];
-        setTunnels([]);
-        setError(message);
-      } else if (tunnelListCache.tunnels.length === 0) {
-        setTunnels([]);
         setError(message);
       }
       console.error("获取隧道列表失败", err);
@@ -73,11 +79,21 @@ export function useTunnelList() {
     if (tunnels.length === 0) return;
 
     const checkRunningStatus = async () => {
-      const running = new Set<number>();
+      const running = new Set<string>();
+      
       for (const tunnel of tunnels) {
-        const isRunning = await frpcManager.isTunnelRunning(tunnel.id);
-        if (isRunning) {
-          running.add(tunnel.id);
+        if (tunnel.type === "api") {
+          const isRunning = await frpcManager.isTunnelRunning(tunnel.data.id);
+          if (isRunning) {
+            running.add(`api_${tunnel.data.id}`);
+          }
+        } else {
+          const isRunning = await customTunnelService.isCustomTunnelRunning(
+            tunnel.data.id
+          );
+          if (isRunning) {
+            running.add(`custom_${tunnel.data.id}`);
+          }
         }
       }
       setRunningTunnels(running);
