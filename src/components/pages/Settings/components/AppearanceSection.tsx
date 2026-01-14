@@ -354,37 +354,39 @@ export function AppearanceSection({
               </ItemActions>
             </Item>
 
-            <Item variant="outline" className="border-0">
-              <ItemContent>
-                <ItemTitle>音量</ItemTitle>
-                <ItemDescription className="text-xs">
-                  调整视频声音的音量 ({videoVolume}%)
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <div className="flex items-center gap-3 w-48">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={videoVolume}
-                    onChange={(e) => {
-                      const newValue = parseInt(e.target.value, 10);
-                      setVideoVolume(newValue);
-                      localStorage.setItem("videoVolume", newValue.toString());
-                      window.dispatchEvent(new Event("videoVolumeChanged"));
-                    }}
-                    className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
-                    style={{
-                      background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${videoVolume}%, var(--muted) ${videoVolume}%, var(--muted) 100%)`,
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground w-10 text-right">
-                    {videoVolume}%
-                  </span>
-                </div>
-              </ItemActions>
-            </Item>
+            {videoStartSound && (
+              <Item variant="outline" className="border-0">
+                <ItemContent>
+                  <ItemTitle>音量</ItemTitle>
+                  <ItemDescription className="text-xs">
+                    调整视频声音的音量 ({videoVolume}%)
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <div className="flex items-center gap-3 w-48">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={videoVolume}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value, 10);
+                        setVideoVolume(newValue);
+                        localStorage.setItem("videoVolume", newValue.toString());
+                        window.dispatchEvent(new Event("videoVolumeChanged"));
+                      }}
+                      className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                      style={{
+                        background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${videoVolume}%, var(--muted) ${videoVolume}%, var(--muted) 100%)`,
+                      }}
+                    />
+                    <span className="text-xs text-muted-foreground w-10 text-right">
+                      {videoVolume}%
+                    </span>
+                  </div>
+                </ItemActions>
+              </Item>
+            )}
           </>
         )}
       </div>
