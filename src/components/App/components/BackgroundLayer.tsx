@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 
 interface BackgroundLayerProps {
   backgroundImage: string | null;
@@ -33,6 +33,39 @@ export function BackgroundLayer({
   onVideoError,
   onVideoLoadedData,
 }: BackgroundLayerProps) {
+  // 监听主题变化
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return document.documentElement.classList.contains("dark");
+  });
+
+  useEffect(() => {
+    const updateTheme = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+
+    // 监听主题变化事件
+    const handleThemeChange = () => {
+      updateTheme();
+    };
+    window.addEventListener("themeChanged", handleThemeChange);
+
+    // 使用 MutationObserver 监听 DOM 类变化
+    const observer = new MutationObserver(() => {
+      updateTheme();
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => {
+      window.removeEventListener("themeChanged", handleThemeChange);
+      observer.disconnect();
+    };
+  }, []);
+
   const overlayStyle = useMemo(() => {
     if (!backgroundImage) {
       return {};
@@ -42,7 +75,8 @@ export function BackgroundLayer({
       backdropFilter: `blur(${blur}px)`,
       WebkitBackdropFilter: `blur(${blur}px)`,
     };
-  }, [backgroundImage, overlayOpacity, blur, getBackgroundColorWithOpacity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backgroundImage, overlayOpacity, blur, getBackgroundColorWithOpacity, isDark]);
 
   useEffect(() => {
     const updateBackgroundColors = () => {
@@ -65,7 +99,7 @@ export function BackgroundLayer({
     requestAnimationFrame(() => {
       requestAnimationFrame(updateBackgroundColors);
     });
-  }, [overlayOpacity, backgroundImage, getBackgroundColorWithOpacity, appContainerRef]);
+  }, [overlayOpacity, backgroundImage, getBackgroundColorWithOpacity, appContainerRef, isDark]);
 
   return (
     <>
