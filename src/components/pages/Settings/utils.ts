@@ -51,6 +51,28 @@ export const getInitialShowTitleBar = (): boolean => {
   return stored === "true";
 };
 
+export const getInitialTranslucentEnabled = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("translucentEnabled");
+  return stored === "true";
+};
+
+export type EffectType = "frosted" | "translucent" | "none";
+
+export const getInitialEffectType = (): EffectType => {
+  if (typeof window === "undefined") return "none";
+  const stored = localStorage.getItem("effectType");
+  if (stored === "frosted" || stored === "translucent" || stored === "none") {
+    return stored;
+  }
+  // 向后兼容：检查旧的设置
+  const frostedEnabled = localStorage.getItem("frostedGlassEnabled") === "true";
+  const translucentEnabled = localStorage.getItem("translucentEnabled") === "true";
+  if (frostedEnabled) return "frosted";
+  if (translucentEnabled) return "translucent";
+  return "none";
+};
+
 export const getMimeType = (filePath: string): string => {
   const ext = filePath.split(".").pop()?.toLowerCase();
   const mimeTypes: Record<string, string> = {

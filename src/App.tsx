@@ -16,6 +16,7 @@ import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
 import { deepLinkService, type DeepLinkData } from "@/services/deepLinkService";
 import { frpcManager } from "@/services/frpcManager";
 import { readFile } from "@tauri-apps/plugin-fs";
+import type { EffectType } from "@/components/pages/Settings/utils";
 
 let globalDownloadFlag = false;
 
@@ -48,10 +49,18 @@ function App() {
     const stored = localStorage.getItem("backgroundBlur");
     return stored ? parseInt(stored, 10) : 4;
   });
-  const [frostedGlassEnabled, setFrostedGlassEnabled] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    const stored = localStorage.getItem("frostedGlassEnabled");
-    return stored === "true";
+  const [effectType, setEffectType] = useState<EffectType>(() => {
+    if (typeof window === "undefined") return "none";
+    const stored = localStorage.getItem("effectType");
+    if (stored === "frosted" || stored === "translucent" || stored === "none") {
+      return stored;
+    }
+    // 向后兼容：检查旧的设置
+    const frostedEnabled = localStorage.getItem("frostedGlassEnabled") === "true";
+    const translucentEnabled = localStorage.getItem("translucentEnabled") === "true";
+    if (frostedEnabled) return "frosted";
+    if (translucentEnabled) return "translucent";
+    return "none";
   });
   const [videoLoadError, setVideoLoadError] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -273,8 +282,11 @@ function App() {
       } else if (e.key === "backgroundBlur") {
         const value = e.newValue ? parseInt(e.newValue, 10) : 4;
         setBlur(value);
-      } else if (e.key === "frostedGlassEnabled") {
-        setFrostedGlassEnabled(e.newValue === "true");
+      } else if (e.key === "effectType") {
+        const value = e.newValue;
+        if (value === "frosted" || value === "translucent" || value === "none") {
+          setEffectType(value);
+        }
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -303,13 +315,15 @@ function App() {
       handleBackgroundOverlayChange,
     );
 
-    const handleFrostedGlassChange = () => {
-      const enabled = localStorage.getItem("frostedGlassEnabled") === "true";
-      setFrostedGlassEnabled(enabled);
+    const handleEffectTypeChange = () => {
+      const stored = localStorage.getItem("effectType");
+      if (stored === "frosted" || stored === "translucent" || stored === "none") {
+        setEffectType(stored);
+      }
     };
     window.addEventListener(
-      "frostedGlassChanged",
-      handleFrostedGlassChange,
+      "effectTypeChanged",
+      handleEffectTypeChange,
     );
 
     return () => {
@@ -323,8 +337,8 @@ function App() {
         handleBackgroundOverlayChange,
       );
       window.removeEventListener(
-        "frostedGlassChanged",
-        handleFrostedGlassChange,
+        "effectTypeChanged",
+        handleEffectTypeChange,
       );
     };
   }, []);
@@ -962,7 +976,9 @@ function App() {
       <div
         ref={appContainerRef}
         className={`flex flex-col h-screen w-screen overflow-hidden text-foreground rounded-[12px] ${
-          backgroundImage && frostedGlassEnabled ? "frosted-glass-enabled" : ""
+          backgroundImage && effectType === "frosted" ? "frosted-glass-enabled" : ""
+        } ${
+          backgroundImage && effectType === "translucent" ? "translucent-enabled" : ""
         }`}
         style={{
           ...backgroundStyle,

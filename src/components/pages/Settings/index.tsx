@@ -6,7 +6,7 @@ import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
 import { useProcessGuard } from "./hooks/useProcessGuard";
-import { getInitialBypassProxy, getInitialShowTitleBar } from "./utils";
+import { getInitialBypassProxy, getInitialShowTitleBar, getInitialEffectType, type EffectType } from "./utils";
 import { AppearanceSection } from "./components/AppearanceSection";
 import { NetworkSection } from "./components/NetworkSection";
 import { SystemSection } from "./components/SystemSection";
@@ -68,11 +68,9 @@ export function Settings() {
   const [showTitleBar, setShowTitleBar] = useState<boolean>(() =>
     getInitialShowTitleBar(),
   );
-  const [frostedGlassEnabled, setFrostedGlassEnabled] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    const stored = localStorage.getItem("frostedGlassEnabled");
-    return stored === "true";
-  });
+  const [effectType, setEffectType] = useState<EffectType>(() =>
+    getInitialEffectType(),
+  );
 
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
@@ -82,6 +80,11 @@ export function Settings() {
     localStorage.setItem("showTitleBar", showTitleBar.toString());
     window.dispatchEvent(new Event("titleBarVisibilityChanged"));
   }, [showTitleBar]);
+
+  useEffect(() => {
+    localStorage.setItem("effectType", effectType);
+    window.dispatchEvent(new Event("effectTypeChanged"));
+  }, [effectType]);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -104,8 +107,8 @@ export function Settings() {
           setOverlayOpacity={setOverlayOpacity}
           blur={blur}
           setBlur={setBlur}
-          frostedGlassEnabled={frostedGlassEnabled}
-          setFrostedGlassEnabled={setFrostedGlassEnabled}
+          effectType={effectType}
+          setEffectType={setEffectType}
           onSelectBackgroundImage={handleSelectBackgroundImage}
           onClearBackgroundImage={handleClearBackgroundImage}
         />

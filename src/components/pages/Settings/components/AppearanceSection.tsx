@@ -7,6 +7,7 @@ import {
   ItemActions,
 } from "@/components/ui/item";
 import type { ThemeMode } from "../types";
+import type { EffectType } from "../utils";
 
 interface AppearanceSectionProps {
   isMacOS: boolean;
@@ -22,8 +23,8 @@ interface AppearanceSectionProps {
   setOverlayOpacity: (value: number) => void;
   blur: number;
   setBlur: (value: number) => void;
-  frostedGlassEnabled: boolean;
-  setFrostedGlassEnabled: (value: boolean) => void;
+  effectType: EffectType;
+  setEffectType: (value: EffectType) => void;
   onSelectBackgroundImage: () => void;
   onClearBackgroundImage: () => void;
 }
@@ -42,8 +43,8 @@ export function AppearanceSection({
   setOverlayOpacity,
   blur,
   setBlur,
-  frostedGlassEnabled,
-  setFrostedGlassEnabled,
+  effectType,
+  setEffectType,
   onSelectBackgroundImage,
   onClearBackgroundImage,
 }: AppearanceSectionProps) {
@@ -193,31 +194,56 @@ export function AppearanceSection({
               className="border-0 border-t border-border/60"
             >
               <ItemContent>
-                <ItemTitle>毛玻璃效果</ItemTitle>
+                <ItemTitle>视觉效果</ItemTitle>
                 <ItemDescription className="text-xs">
-                  为所有元素应用毛玻璃透明效果
+                  选择背景视觉效果类型
                 </ItemDescription>
               </ItemContent>
               <ItemActions>
-                <button
-                  onClick={() => {
-                    const newValue = !frostedGlassEnabled;
-                    setFrostedGlassEnabled(newValue);
-                    localStorage.setItem("frostedGlassEnabled", newValue.toString());
-                    window.dispatchEvent(new Event("frostedGlassChanged"));
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    frostedGlassEnabled ? "bg-foreground" : "bg-muted"
-                  } cursor-pointer`}
-                  role="switch"
-                  aria-checked={frostedGlassEnabled}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                      frostedGlassEnabled ? "translate-x-6" : "translate-x-1"
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setEffectType("none");
+                      localStorage.setItem("effectType", "none");
+                      window.dispatchEvent(new Event("effectTypeChanged"));
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                      effectType === "none"
+                        ? "bg-foreground text-background"
+                        : "border border-border/60 hover:bg-muted/40"
                     }`}
-                  />
-                </button>
+                  >
+                    无
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEffectType("frosted");
+                      localStorage.setItem("effectType", "frosted");
+                      window.dispatchEvent(new Event("effectTypeChanged"));
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                      effectType === "frosted"
+                        ? "bg-foreground text-background"
+                        : "border border-border/60 hover:bg-muted/40"
+                    }`}
+                  >
+                    毛玻璃
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEffectType("translucent");
+                      localStorage.setItem("effectType", "translucent");
+                      window.dispatchEvent(new Event("effectTypeChanged"));
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                      effectType === "translucent"
+                        ? "bg-foreground text-background"
+                        : "border border-border/60 hover:bg-muted/40"
+                    }`}
+                  >
+                    半透明
+                  </button>
+                </div>
               </ItemActions>
             </Item>
 

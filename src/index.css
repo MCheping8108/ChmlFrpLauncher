@@ -411,4 +411,72 @@
     backdrop-filter: blur(20px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   }
+
+  /* 半透明效果 - 亮色模式 */
+  .translucent-enabled [data-slot="card"],
+  .translucent-enabled .border.rounded-lg.bg-card,
+  .translucent-enabled .bg-card,
+  .translucent-enabled [data-slot="popover"],
+  .translucent-enabled .bg-popover,
+  .translucent-enabled .bg-sidebar,
+  .translucent-enabled .bg-background,
+  .translucent-enabled input,
+  .translucent-enabled textarea,
+  .translucent-enabled select {
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+  }
+
+  /* 半透明效果 - 暗色模式 */
+  .dark .translucent-enabled [data-slot="card"],
+  .dark .translucent-enabled .border.rounded-lg.bg-card,
+  .dark .translucent-enabled .bg-card,
+  .dark .translucent-enabled [data-slot="popover"],
+  .dark .translucent-enabled .bg-popover,
+  .dark .translucent-enabled .bg-sidebar,
+  .dark .translucent-enabled .bg-background,
+  .dark .translucent-enabled input,
+  .dark .translucent-enabled textarea,
+  .dark .translucent-enabled select {
+    background: rgba(15, 16, 20, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  /* Item 在半透明模式下保持透明 */
+  .translucent-enabled [data-slot="item"] {
+    background: transparent !important;
+  }
+
+  /* Item 边框在半透明模式下的优化 */
+  .translucent-enabled [data-slot="item"][data-variant="outline"] {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .dark .translucent-enabled [data-slot="item"][data-variant="outline"] {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* 半透明效果 - CSS 变量（亮色模式）*/
+  .translucent-enabled {
+    --card: rgba(255, 255, 255, 0.7);
+    --sidebar: rgba(255, 255, 255, 0.7);
+    --popover: rgba(255, 255, 255, 0.7);
+  }
+
+  /* 半透明效果 - CSS 变量（暗色模式）*/
+  .dark .translucent-enabled {
+    --card: rgba(15, 16, 20, 0.7);
+    --sidebar: rgba(15, 16, 20, 0.7);
+    --popover: rgba(15, 16, 20, 0.7);
+  }
+
+  /* 签到信息弹窗在半透明模式下的优化 */
+  .translucent-enabled .bg-card\/95.backdrop-blur-md {
+    z-index: 9999 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  .dark .translucent-enabled .bg-card\/95.backdrop-blur-md {
+    background: rgba(15, 16, 20, 0.95) !important;
+  }
 }
