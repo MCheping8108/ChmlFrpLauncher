@@ -15,6 +15,7 @@ import { AntivirusWarningDialog } from "@/components/dialogs/AntivirusWarningDia
 import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
 import { deepLinkService, type DeepLinkData } from "@/services/deepLinkService";
 import { frpcManager } from "@/services/frpcManager";
+import { readFile } from "@tauri-apps/plugin-fs";
 
 let globalDownloadFlag = false;
 
@@ -52,6 +53,8 @@ function App() {
     const stored = localStorage.getItem("frostedGlassEnabled");
     return stored === "true";
   });
+  const [videoLoadError, setVideoLoadError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const getInitialTheme = (): string => {
     if (typeof window === "undefined") return "light";
@@ -674,7 +677,6 @@ function App() {
   useEffect(() => {
     const wrappedHandler = async (data: DeepLinkData) => {
       if (!isAppReadyRef.current) {
-        console.log("应用未准备好，缓存 deep-link 事件:", data);
         pendingDeepLinkRef.current = data;
         return;
       }
@@ -745,11 +747,109 @@ function App() {
 
   const backgroundType = useMemo(() => {
     if (!backgroundImage) return null;
-    if (backgroundImage.startsWith("data:video/")) return "video";
+    if (backgroundImage.startsWith("data:video/") || backgroundImage.startsWith("file://") || backgroundImage.startsWith("app://")) return "video";
     if (backgroundImage.startsWith("data:image/")) return "image";
-    // 向后兼容：如果没有明确的类型，假设是图片
     return "image";
   }, [backgroundImage]);
+
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let currentBlobUrl: string | null = null;
+    let isMounted = true;
+
+    const loadVideo = async (retryCount = 0) => {
+      if (backgroundType === "video" && backgroundImage) {
+        if (backgroundImage.startsWith("app://")) {
+          const filePath = backgroundImage.replace("app://", "");
+          try {
+            const fileData = await readFile(filePath);
+            if (!fileData || fileData.length === 0) {
+              throw new Error("File is empty");
+            }
+            if (!isMounted) return;
+            
+            const blob = new Blob([fileData], { type: "video/mp4" });
+            const blobUrl = URL.createObjectURL(blob);
+            if (currentBlobUrl) {
+              URL.revokeObjectURL(currentBlobUrl);
+            }
+            currentBlobUrl = blobUrl;
+            setVideoSrc(blobUrl);
+            setVideoLoadError(false);
+          } catch {
+            if (!isMounted) return;
+            
+            if (retryCount < 2) {
+              setTimeout(() => {
+                if (isMounted) {
+                  loadVideo(retryCount + 1);
+                }
+              }, 1000);
+              return;
+            }
+            
+            if (currentBlobUrl) {
+              URL.revokeObjectURL(currentBlobUrl);
+              currentBlobUrl = null;
+            }
+            setVideoSrc(null);
+            setVideoLoadError(true);
+          }
+        } else if (backgroundImage.startsWith("file://")) {
+          const filePath = backgroundImage.replace("file://", "");
+          try {
+            const fileData = await readFile(filePath);
+            if (!fileData || fileData.length === 0) {
+              throw new Error("File is empty");
+            }
+            if (!isMounted) return;
+            
+            const blob = new Blob([fileData], { type: "video/mp4" });
+            const blobUrl = URL.createObjectURL(blob);
+            if (currentBlobUrl) {
+              URL.revokeObjectURL(currentBlobUrl);
+            }
+            currentBlobUrl = blobUrl;
+            setVideoSrc(blobUrl);
+            setVideoLoadError(false);
+          } catch {
+            if (!isMounted) return;
+            
+            if (retryCount < 2) {
+              setTimeout(() => {
+                if (isMounted) {
+                  loadVideo(retryCount + 1);
+                }
+              }, 1000);
+              return;
+            }
+            
+            if (currentBlobUrl) {
+              URL.revokeObjectURL(currentBlobUrl);
+              currentBlobUrl = null;
+            }
+            setVideoSrc(null);
+            setVideoLoadError(true);
+          }
+        } else {
+          setVideoSrc(backgroundImage);
+          setVideoLoadError(false);
+        }
+      } else {
+        setVideoSrc(null);
+      }
+    };
+
+    loadVideo();
+
+    return () => {
+      isMounted = false;
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
+      }
+    };
+  }, [backgroundType, backgroundImage]);
 
   const backgroundStyle = useMemo(() => {
     if (backgroundImage && backgroundType === "image") {
@@ -802,6 +902,61 @@ function App() {
     });
   }, [theme, overlayOpacity, backgroundImage]);
 
+  useEffect(() => {
+    if (backgroundType === "video") {
+      setVideoLoadError(false);
+    }
+  }, [backgroundImage, backgroundType]);
+
+  const handleVideoError = useCallback(() => {
+    if (videoLoadError) return;
+    setVideoLoadError(true);
+  }, [videoLoadError]);
+
+  useEffect(() => {
+    if (backgroundType !== "video" || !backgroundImage || videoLoadError || !videoRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    let timeoutId: number | null = null;
+
+    const handleCanPlay = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      setVideoLoadError(false);
+    };
+
+    const startTimeout = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        if (video.readyState < 1) {
+          handleVideoError();
+        }
+      }, 8000);
+    };
+
+    if (video.readyState >= 1) {
+      setVideoLoadError(false);
+    } else {
+      startTimeout();
+      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('loadedmetadata', handleCanPlay);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('loadedmetadata', handleCanPlay);
+    };
+  }, [backgroundType, backgroundImage, videoLoadError, handleVideoError]);
+
   return (
     <>
       <div
@@ -816,19 +971,31 @@ function App() {
           position: 'relative',
         }}
       >
-        {backgroundType === "video" && backgroundImage && (
+        {backgroundType === "video" && videoSrc && !videoLoadError && (
           <video
+            ref={videoRef}
             autoPlay
             loop
             muted
             playsInline
+            preload="auto"
+            onError={handleVideoError}
+            onLoadedData={() => {
+              if (videoRef.current) {
+                videoRef.current.play().catch(() => {});
+              }
+            }}
             className="absolute inset-0 w-full h-full object-cover"
             style={{
               zIndex: 0,
               borderRadius: '12px',
+              pointerEvents: 'none',
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
             }}
           >
-            <source src={backgroundImage} type={backgroundImage.split(';')[0].split(':')[1]} />
+            <source src={videoSrc} type={backgroundImage?.startsWith("file://") || backgroundImage?.startsWith("app://") ? "video/mp4" : (backgroundImage?.split(';')[0]?.split(':')[1] || "video/mp4")} />
           </video>
         )}
         <div

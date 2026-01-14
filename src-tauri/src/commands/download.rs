@@ -162,7 +162,7 @@ pub async fn get_download_url() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
-    // 从 API 获取下载信息（包括 URL、hash、size）
+    // 从 API 获取下载信息
     let download_info = get_download_info().await?;
     let url = download_info.url;
     let expected_hash = download_info.hash;

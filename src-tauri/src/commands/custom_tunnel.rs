@@ -406,8 +406,6 @@ pub async fn is_custom_tunnel_running(
     }
 }
 
-// ========== 辅助函数 ==========
-
 /// INI配置解析结果
 struct IniParsedInfo {
     server_addr: Option<String>,

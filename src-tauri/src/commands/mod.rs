@@ -1,5 +1,6 @@
 // 命令模块
 pub mod autostart;
+pub mod background;
 pub mod custom_tunnel;
 pub mod download;
 pub mod http;
@@ -10,6 +11,7 @@ pub mod tray;
 
 // 重新导出所有命令函数，方便使用
 pub use autostart::*;
+pub use background::*;
 pub use custom_tunnel::*;
 pub use download::*;
 pub use http::*;

@@ -7,6 +7,7 @@ import {
   getInitialBackgroundOverlayOpacity,
   getInitialBackgroundBlur,
   getMimeType,
+  isVideoFile,
 } from "../utils";
 
 export function useBackgroundImage() {
@@ -58,23 +59,45 @@ export function useBackgroundImage() {
       });
 
       if (selected && typeof selected === "string") {
-        const fileData = await readFile(selected);
-        const uint8Array = new Uint8Array(fileData);
+        const isVideo = isVideoFile(selected);
+        
+        if (isVideo) {
+          // 对于视频文件，复制到应用数据目录，避免中文路径问题
+          try {
+            const { invoke } = await import("@tauri-apps/api/core");
+            const copiedPath = await invoke<string>("copy_background_video", {
+              sourcePath: selected,
+            });
+            const videoPath = `app://${copiedPath}`;
+            setBackgroundImage(videoPath);
+            toast.success("背景视频设置成功", {
+              duration: 2000,
+            });
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            toast.error(`复制视频文件失败: ${errorMsg}`, {
+              duration: 3000,
+            });
+          }
+        } else {
+          // 对于图片文件，继续使用 base64 data URL
+          const fileData = await readFile(selected);
+          const uint8Array = new Uint8Array(fileData);
 
-        let binaryString = "";
-        for (let i = 0; i < uint8Array.length; i++) {
-          binaryString += String.fromCharCode(uint8Array[i]);
+          let binaryString = "";
+          for (let i = 0; i < uint8Array.length; i++) {
+            binaryString += String.fromCharCode(uint8Array[i]);
+          }
+
+          const base64 = btoa(binaryString);
+          const mimeType = getMimeType(selected);
+          const dataUrl = `data:${mimeType};base64,${base64}`;
+
+          setBackgroundImage(dataUrl);
+          toast.success("背景图设置成功", {
+            duration: 2000,
+          });
         }
-
-        const base64 = btoa(binaryString);
-        const mimeType = getMimeType(selected);
-        const dataUrl = `data:${mimeType};base64,${base64}`;
-
-        setBackgroundImage(dataUrl);
-        const isVideo = mimeType.startsWith("video/");
-        toast.success(isVideo ? "背景视频设置成功" : "背景图设置成功", {
-          duration: 2000,
-        });
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);

@@ -141,6 +141,8 @@ pub fn run() {
             commands::start_custom_tunnel,
             commands::stop_custom_tunnel,
             commands::is_custom_tunnel_running,
+            commands::copy_background_video,
+            commands::get_background_video_path,
             commands::process_guard::set_process_guard_enabled,
             commands::process_guard::get_process_guard_enabled,
             commands::process_guard::add_guarded_process,
