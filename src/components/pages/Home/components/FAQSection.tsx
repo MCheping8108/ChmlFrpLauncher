@@ -19,7 +19,7 @@ export function FAQSection() {
             <AccordionTrigger>软件出现了BUG怎么办</AccordionTrigger>
             <AccordionContent className="flex flex-col gap-4 text-balance">
               <p>
-                软件目前为公开测试版，使用途中遇见的任何问题，请在任意交流群中反馈问题，我们会尽快修复。
+                软件目前为初期版本，使用途中遇见的任何问题，请在任意交流群中反馈问题，我们会尽快修复。
               </p>
             </AccordionContent>
           </AccordionItem>

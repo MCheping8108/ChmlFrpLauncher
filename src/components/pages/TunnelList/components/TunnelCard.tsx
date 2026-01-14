@@ -9,8 +9,7 @@ import { deleteTunnel } from "@/services/api";
 import { customTunnelService } from "@/services/customTunnelService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 import { toast } from "sonner";
-import { Monitor, Globe, Link as LinkIcon, Activity, Server, Copy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Monitor, Globe, Link as LinkIcon, Server } from "lucide-react";
 
 interface TunnelCardProps {
   tunnel: UnifiedTunnel;
@@ -77,7 +76,7 @@ export function TunnelCard({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className="group border border-border/60 rounded-xl overflow-hidden hover:border-foreground/20 hover:shadow-sm transition-all bg-card">
+        <div className="group border border-border/60 rounded-xl overflow-hidden transition-all bg-card">
           <div className="w-full bg-muted/20">
             <Progress
               value={progressValue}
@@ -97,7 +96,13 @@ export function TunnelCard({
                   <h3 className="font-semibold text-foreground truncate text-sm">
                     {tunnel.data.name}
                   </h3>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-green-500 animate-pulse" : "bg-muted-foreground/30"}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full ${
+                    isApi && tunnel.data.nodestate !== 'online' 
+                      ? "bg-red-500" 
+                      : isRunning 
+                        ? "bg-green-500 animate-pulse" 
+                        : "bg-muted-foreground/30"
+                  }`} />
                 </div>
                 <div className="flex items-center gap-2">
                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground bg-muted/10 uppercase tracking-wider">
@@ -155,26 +160,8 @@ export function TunnelCard({
                           ? tunnel.data.dorp
                           : `${tunnel.data.ip}:${tunnel.data.dorp}`}
                       </span>
-                      <Copy className="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity text-muted-foreground" />
                     </div>
                   </div>
-                  {tunnel.data.nodestate && (
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Activity className="w-3.5 h-3.5 opacity-70" />
-                        <span>状态</span>
-                      </div>
-                      <span
-                        className={
-                          tunnel.data.nodestate === "online"
-                            ? "text-green-600 dark:text-green-500 font-medium"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {tunnel.data.nodestate === "online" ? "在线" : "离线"}
-                      </span>
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
@@ -218,3 +205,4 @@ export function TunnelCard({
     </ContextMenu>
   );
 }
+
