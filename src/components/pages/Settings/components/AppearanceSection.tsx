@@ -153,9 +153,9 @@ export function AppearanceSection({
 
         <Item variant="outline" className="border-0">
           <ItemContent>
-            <ItemTitle>背景图</ItemTitle>
+            <ItemTitle>背景</ItemTitle>
             <ItemDescription className="text-xs">
-              设置应用背景图片
+              设置应用背景图片或视频
               {backgroundImage && (
                 <span className="ml-1 text-muted-foreground">(已设置)</span>
               )}
@@ -172,7 +172,7 @@ export function AppearanceSection({
                     : "bg-foreground text-background hover:opacity-90"
                 }`}
               >
-                {isSelectingImage ? "选择中..." : "选择图片"}
+                {isSelectingImage ? "选择中..." : "选择文件"}
               </button>
               {backgroundImage && (
                 <button
@@ -228,7 +228,7 @@ export function AppearanceSection({
               <ItemContent>
                 <ItemTitle>遮罩透明度</ItemTitle>
                 <ItemDescription className="text-xs">
-                  调整背景图遮罩的透明度 ({overlayOpacity}%)
+                  调整背景遮罩的透明度 ({overlayOpacity}%)
                 </ItemDescription>
               </ItemContent>
               <ItemActions>
@@ -257,7 +257,7 @@ export function AppearanceSection({
               <ItemContent>
                 <ItemTitle>模糊度</ItemTitle>
                 <ItemDescription className="text-xs">
-                  调整背景图的模糊效果 ({blur}px)
+                  调整背景的模糊效果 ({blur}px)
                 </ItemDescription>
               </ItemContent>
               <ItemActions>

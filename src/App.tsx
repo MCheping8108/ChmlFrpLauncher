@@ -520,8 +520,16 @@ function App() {
     return `rgba(246, 247, 249, ${opacity / 100})`;
   };
 
+  const backgroundType = useMemo(() => {
+    if (!backgroundImage) return null;
+    if (backgroundImage.startsWith("data:video/")) return "video";
+    if (backgroundImage.startsWith("data:image/")) return "image";
+    // 向后兼容：如果没有明确的类型，假设是图片
+    return "image";
+  }, [backgroundImage]);
+
   const backgroundStyle = useMemo(() => {
-    if (backgroundImage) {
+    if (backgroundImage && backgroundType === "image") {
       return {
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: "cover",
@@ -534,7 +542,7 @@ function App() {
       backgroundColor: getBackgroundColorWithOpacity(100),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [backgroundImage, theme]);
+  }, [backgroundImage, backgroundType, theme]);
 
   const overlayStyle = useMemo(() => {
     if (!backgroundImage) {
@@ -589,12 +597,28 @@ function App() {
           position: 'relative',
         }}
       >
+        {backgroundType === "video" && backgroundImage && (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              zIndex: 0,
+              borderRadius: '12px',
+            }}
+          >
+            <source src={backgroundImage} type={backgroundImage.split(';')[0].split(':')[1]} />
+          </video>
+        )}
         <div
           className="absolute inset-0 background-overlay rounded-[12px]"
           style={{
             ...overlayStyle,
             borderRadius: '12px',
             pointerEvents: 'none',
+            zIndex: 1,
           }}
         />
         {(!isMacOS || showTitleBar) && (
@@ -602,7 +626,7 @@ function App() {
             <TitleBar />
           </div>
         )}
-        <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]">
+        <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]" style={{ zIndex: 10 }}>
           <Sidebar
             activeTab={activeTab}
             onTabChange={handleTabChange}
