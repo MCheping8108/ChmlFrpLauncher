@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/item";
 import type { ThemeMode } from "../types";
 import type { EffectType } from "../utils";
+import { getBackgroundType } from "../utils";
 
 interface AppearanceSectionProps {
   isMacOS: boolean;
@@ -25,6 +26,10 @@ interface AppearanceSectionProps {
   setBlur: (value: number) => void;
   effectType: EffectType;
   setEffectType: (value: EffectType) => void;
+  videoStartSound: boolean;
+  setVideoStartSound: (value: boolean) => void;
+  videoVolume: number;
+  setVideoVolume: (value: number) => void;
   onSelectBackgroundImage: () => void;
   onClearBackgroundImage: () => void;
 }
@@ -45,9 +50,15 @@ export function AppearanceSection({
   setBlur,
   effectType,
   setEffectType,
+  videoStartSound,
+  setVideoStartSound,
+  videoVolume,
+  setVideoVolume,
   onSelectBackgroundImage,
   onClearBackgroundImage,
 }: AppearanceSectionProps) {
+  const backgroundType = getBackgroundType(backgroundImage);
+  const isVideo = backgroundType === "video";
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -301,6 +312,75 @@ export function AppearanceSection({
                   />
                   <span className="text-xs text-muted-foreground w-10 text-right">
                     {blur}px
+                  </span>
+                </div>
+              </ItemActions>
+            </Item>
+          </>
+        )}
+
+        {isVideo && (
+          <>
+            <Item
+              variant="outline"
+              className="border-0 border-t border-border/60"
+            >
+              <ItemContent>
+                <ItemTitle>启动声音</ItemTitle>
+                <ItemDescription className="text-xs">
+                  在应用启动时播放视频声音（仅第一次循环）
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => {
+                    const newValue = !videoStartSound;
+                    setVideoStartSound(newValue);
+                    localStorage.setItem("videoStartSound", newValue.toString());
+                    window.dispatchEvent(new Event("videoStartSoundChanged"));
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    videoStartSound ? "bg-foreground" : "bg-muted"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={videoStartSound}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      videoStartSound ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+
+            <Item variant="outline" className="border-0">
+              <ItemContent>
+                <ItemTitle>音量</ItemTitle>
+                <ItemDescription className="text-xs">
+                  调整视频声音的音量 ({videoVolume}%)
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <div className="flex items-center gap-3 w-48">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={videoVolume}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value, 10);
+                      setVideoVolume(newValue);
+                      localStorage.setItem("videoVolume", newValue.toString());
+                      window.dispatchEvent(new Event("videoVolumeChanged"));
+                    }}
+                    className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                    style={{
+                      background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${videoVolume}%, var(--muted) ${videoVolume}%, var(--muted) 100%)`,
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground w-10 text-right">
+                    {videoVolume}%
                   </span>
                 </div>
               </ItemActions>

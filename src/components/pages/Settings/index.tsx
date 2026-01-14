@@ -6,7 +6,7 @@ import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
 import { useProcessGuard } from "./hooks/useProcessGuard";
-import { getInitialBypassProxy, getInitialShowTitleBar, getInitialEffectType, type EffectType } from "./utils";
+import { getInitialBypassProxy, getInitialShowTitleBar, getInitialEffectType, getInitialVideoStartSound, getInitialVideoVolume, type EffectType } from "./utils";
 import { AppearanceSection } from "./components/AppearanceSection";
 import { NetworkSection } from "./components/NetworkSection";
 import { SystemSection } from "./components/SystemSection";
@@ -71,6 +71,12 @@ export function Settings() {
   const [effectType, setEffectType] = useState<EffectType>(() =>
     getInitialEffectType(),
   );
+  const [videoStartSound, setVideoStartSound] = useState<boolean>(() =>
+    getInitialVideoStartSound(),
+  );
+  const [videoVolume, setVideoVolume] = useState<number>(() =>
+    getInitialVideoVolume(),
+  );
 
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
@@ -85,6 +91,16 @@ export function Settings() {
     localStorage.setItem("effectType", effectType);
     window.dispatchEvent(new Event("effectTypeChanged"));
   }, [effectType]);
+
+  useEffect(() => {
+    localStorage.setItem("videoStartSound", videoStartSound.toString());
+    window.dispatchEvent(new Event("videoStartSoundChanged"));
+  }, [videoStartSound]);
+
+  useEffect(() => {
+    localStorage.setItem("videoVolume", videoVolume.toString());
+    window.dispatchEvent(new Event("videoVolumeChanged"));
+  }, [videoVolume]);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -109,6 +125,10 @@ export function Settings() {
           setBlur={setBlur}
           effectType={effectType}
           setEffectType={setEffectType}
+          videoStartSound={videoStartSound}
+          setVideoStartSound={setVideoStartSound}
+          videoVolume={videoVolume}
+          setVideoVolume={setVideoVolume}
           onSelectBackgroundImage={handleSelectBackgroundImage}
           onClearBackgroundImage={handleClearBackgroundImage}
         />

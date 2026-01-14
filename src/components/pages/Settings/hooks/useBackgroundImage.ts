@@ -62,7 +62,6 @@ export function useBackgroundImage() {
         const isVideo = isVideoFile(selected);
         
         if (isVideo) {
-          // 对于视频文件，复制到应用数据目录，避免中文路径问题
           try {
             const { invoke } = await import("@tauri-apps/api/core");
             const copiedPath = await invoke<string>("copy_background_video", {
@@ -80,7 +79,6 @@ export function useBackgroundImage() {
             });
           }
         } else {
-          // 对于图片文件，继续使用 base64 data URL
           const fileData = await readFile(selected);
           const uint8Array = new Uint8Array(fileData);
 

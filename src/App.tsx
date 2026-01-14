@@ -17,6 +17,7 @@ import { deepLinkService, type DeepLinkData } from "@/services/deepLinkService";
 import { frpcManager } from "@/services/frpcManager";
 import { readFile } from "@tauri-apps/plugin-fs";
 import type { EffectType } from "@/components/pages/Settings/utils";
+import { getInitialVideoStartSound, getInitialVideoVolume } from "@/components/pages/Settings/utils";
 
 let globalDownloadFlag = false;
 
@@ -55,7 +56,6 @@ function App() {
     if (stored === "frosted" || stored === "translucent" || stored === "none") {
       return stored;
     }
-    // 向后兼容：检查旧的设置
     const frostedEnabled = localStorage.getItem("frostedGlassEnabled") === "true";
     const translucentEnabled = localStorage.getItem("translucentEnabled") === "true";
     if (frostedEnabled) return "frosted";
@@ -64,6 +64,13 @@ function App() {
   });
   const [videoLoadError, setVideoLoadError] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoStartSound, setVideoStartSound] = useState<boolean>(() =>
+    getInitialVideoStartSound(),
+  );
+  const [videoVolume, setVideoVolume] = useState<number>(() =>
+    getInitialVideoVolume(),
+  );
+  const hasPlayedFirstLoopRef = useRef(false);
 
   const getInitialTheme = (): string => {
     if (typeof window === "undefined") return "light";
@@ -276,6 +283,7 @@ function App() {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "backgroundImage") {
         setBackgroundImage(e.newValue);
+        hasPlayedFirstLoopRef.current = false;
       } else if (e.key === "backgroundOverlayOpacity") {
         const value = e.newValue ? parseInt(e.newValue, 10) : 80;
         setOverlayOpacity(value);
@@ -287,6 +295,13 @@ function App() {
         if (value === "frosted" || value === "translucent" || value === "none") {
           setEffectType(value);
         }
+      } else if (e.key === "videoStartSound") {
+        const value = e.newValue === "true";
+        setVideoStartSound(value);
+        hasPlayedFirstLoopRef.current = false;
+      } else if (e.key === "videoVolume") {
+        const value = e.newValue ? parseInt(e.newValue, 10) : 50;
+        setVideoVolume(value);
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -326,6 +341,27 @@ function App() {
       handleEffectTypeChange,
     );
 
+    const handleVideoStartSoundChange = () => {
+      const stored = localStorage.getItem("videoStartSound");
+      const value = stored === "true";
+      setVideoStartSound(value);
+      hasPlayedFirstLoopRef.current = false;
+    };
+    window.addEventListener(
+      "videoStartSoundChanged",
+      handleVideoStartSoundChange,
+    );
+
+    const handleVideoVolumeChange = () => {
+      const stored = localStorage.getItem("videoVolume");
+      const value = stored ? parseInt(stored, 10) : 50;
+      setVideoVolume(value);
+    };
+    window.addEventListener(
+      "videoVolumeChanged",
+      handleVideoVolumeChange,
+    );
+
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener(
@@ -339,6 +375,14 @@ function App() {
       window.removeEventListener(
         "effectTypeChanged",
         handleEffectTypeChange,
+      );
+      window.removeEventListener(
+        "videoStartSoundChanged",
+        handleVideoStartSoundChange,
+      );
+      window.removeEventListener(
+        "videoVolumeChanged",
+        handleVideoVolumeChange,
       );
     };
   }, []);
@@ -919,8 +963,71 @@ function App() {
   useEffect(() => {
     if (backgroundType === "video") {
       setVideoLoadError(false);
+      hasPlayedFirstLoopRef.current = false;
     }
   }, [backgroundImage, backgroundType]);
+
+  useEffect(() => {
+    if (backgroundType !== "video" || !videoRef.current) return;
+
+    const video = videoRef.current;
+    
+    video.volume = videoVolume / 100;
+    video.muted = !videoStartSound || hasPlayedFirstLoopRef.current;
+    
+    if (videoStartSound && !hasPlayedFirstLoopRef.current && video.paused) {
+      video.play().catch(() => {});
+    }
+  }, [backgroundType, videoStartSound, videoVolume]);
+
+  useEffect(() => {
+    if (backgroundType !== "video" || !videoRef.current || !videoStartSound || hasPlayedFirstLoopRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    let lastTime = video.currentTime || 0;
+    let hasReachedNearEnd = false;
+    
+    const handleTimeUpdate = () => {
+      if (hasPlayedFirstLoopRef.current) {
+        return;
+      }
+
+      const currentTime = video.currentTime || 0;
+      const duration = video.duration;
+
+      if (!duration || duration === 0) {
+        return;
+      }
+
+      if (currentTime >= duration - 0.5) {
+        hasReachedNearEnd = true;
+      }
+
+      if (hasReachedNearEnd && currentTime < 0.5 && lastTime > duration - 0.3) {
+        hasPlayedFirstLoopRef.current = true;
+        video.muted = true;
+        hasReachedNearEnd = false;
+      }
+
+      lastTime = currentTime;
+    };
+
+    const handleSeeking = () => {
+      if (hasPlayedFirstLoopRef.current && video.currentTime < 0.5) {
+        video.muted = true;
+      }
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('seeking', handleSeeking);
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('seeking', handleSeeking);
+    };
+  }, [backgroundType, videoStartSound, videoSrc]);
 
   const handleVideoError = useCallback(() => {
     if (videoLoadError) return;
@@ -992,12 +1099,13 @@ function App() {
             ref={videoRef}
             autoPlay
             loop
-            muted
+            muted={!videoStartSound || hasPlayedFirstLoopRef.current}
             playsInline
             preload="auto"
             onError={handleVideoError}
             onLoadedData={() => {
               if (videoRef.current) {
+                videoRef.current.volume = videoVolume / 100;
                 videoRef.current.play().catch(() => {});
               }
             }}
