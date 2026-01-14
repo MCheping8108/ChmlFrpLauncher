@@ -537,6 +537,62 @@ function App() {
           return;
         }
 
+        const frpcExists = await frpcDownloader.checkFrpcExists();
+        if (!frpcExists) {
+          toast.dismiss();
+          toast.loading(
+            <div className="space-y-2">
+              <div className="text-sm font-medium">正在下载 frpc 客户端...</div>
+              <Progress value={0} />
+              <div className="text-xs text-muted-foreground">0.0%</div>
+            </div>,
+            {
+              duration: Infinity,
+            },
+          );
+
+          try {
+            await frpcDownloader.downloadFrpc((progress) => {
+              toast.loading(
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">
+                    正在下载 frpc 客户端...
+                  </div>
+                  <Progress value={progress.percentage} />
+                  <div className="text-xs text-muted-foreground">
+                    {progress.percentage.toFixed(1)}% (
+                    {(progress.downloaded / 1024 / 1024).toFixed(2)} MB /{" "}
+                    {(progress.total / 1024 / 1024).toFixed(2)} MB)
+                  </div>
+                </div>,
+                {
+                  duration: Infinity,
+                },
+              );
+            });
+
+            toast.dismiss();
+            toast.success("frpc 客户端下载成功", {
+              duration: 2000,
+            });
+          } catch (error) {
+            toast.dismiss();
+            const errorMsg =
+              error instanceof Error ? error.message : String(error);
+            toast.error(
+              <div className="space-y-2">
+                <div className="text-sm font-medium">frpc 客户端下载失败</div>
+                <div className="text-xs text-muted-foreground">{errorMsg}</div>
+                <div className="text-xs">请前往设置页面重新下载</div>
+              </div>,
+              {
+                duration: 10000,
+              },
+            );
+            return;
+          }
+        }
+
         toast.loading(`正在启动隧道 ${tunnel.name}...`, {
           duration: Infinity,
         });
