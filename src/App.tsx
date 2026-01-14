@@ -45,6 +45,11 @@ function App() {
     const stored = localStorage.getItem("backgroundBlur");
     return stored ? parseInt(stored, 10) : 4;
   });
+  const [frostedGlassEnabled, setFrostedGlassEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("frostedGlassEnabled");
+    return stored === "true";
+  });
 
   const getInitialTheme = (): string => {
     if (typeof window === "undefined") return "light";
@@ -73,6 +78,19 @@ function App() {
 
   useEffect(() => {
     logStore.startListening();
+    
+    const initProcessGuard = async () => {
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        const guardEnabled = localStorage.getItem("processGuardEnabled") === "true";
+        await invoke("set_process_guard_enabled", { enabled: guardEnabled });
+        console.log(`[守护进程] 初始化状态: ${guardEnabled ? "启用" : "禁用"}`);
+      } catch (error) {
+        console.error("Failed to initialize process guard:", error);
+      }
+    };
+    
+    initProcessGuard();
   }, []);
 
   useEffect(() => {
@@ -248,6 +266,8 @@ function App() {
       } else if (e.key === "backgroundBlur") {
         const value = e.newValue ? parseInt(e.newValue, 10) : 4;
         setBlur(value);
+      } else if (e.key === "frostedGlassEnabled") {
+        setFrostedGlassEnabled(e.newValue === "true");
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -276,6 +296,15 @@ function App() {
       handleBackgroundOverlayChange,
     );
 
+    const handleFrostedGlassChange = () => {
+      const enabled = localStorage.getItem("frostedGlassEnabled") === "true";
+      setFrostedGlassEnabled(enabled);
+    };
+    window.addEventListener(
+      "frostedGlassChanged",
+      handleFrostedGlassChange,
+    );
+
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener(
@@ -285,6 +314,10 @@ function App() {
       window.removeEventListener(
         "backgroundOverlayChanged",
         handleBackgroundOverlayChange,
+      );
+      window.removeEventListener(
+        "frostedGlassChanged",
+        handleFrostedGlassChange,
       );
     };
   }, []);
@@ -487,8 +520,16 @@ function App() {
     return `rgba(246, 247, 249, ${opacity / 100})`;
   };
 
+  const backgroundType = useMemo(() => {
+    if (!backgroundImage) return null;
+    if (backgroundImage.startsWith("data:video/")) return "video";
+    if (backgroundImage.startsWith("data:image/")) return "image";
+    // 向后兼容：如果没有明确的类型，假设是图片
+    return "image";
+  }, [backgroundImage]);
+
   const backgroundStyle = useMemo(() => {
-    if (backgroundImage) {
+    if (backgroundImage && backgroundType === "image") {
       return {
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: "cover",
@@ -501,7 +542,7 @@ function App() {
       backgroundColor: getBackgroundColorWithOpacity(100),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [backgroundImage, theme]);
+  }, [backgroundImage, backgroundType, theme]);
 
   const overlayStyle = useMemo(() => {
     if (!backgroundImage) {
@@ -546,18 +587,38 @@ function App() {
     <>
       <div
         ref={appContainerRef}
-        className="flex flex-col h-screen overflow-hidden text-foreground rounded-[12px]"
+        className={`flex flex-col h-screen w-screen overflow-hidden text-foreground rounded-[12px] ${
+          backgroundImage && frostedGlassEnabled ? "frosted-glass-enabled" : ""
+        }`}
         style={{
           ...backgroundStyle,
           borderRadius: '12px',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
+        {backgroundType === "video" && backgroundImage && (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              zIndex: 0,
+              borderRadius: '12px',
+            }}
+          >
+            <source src={backgroundImage} type={backgroundImage.split(';')[0].split(':')[1]} />
+          </video>
+        )}
         <div
           className="absolute inset-0 background-overlay rounded-[12px]"
           style={{
             ...overlayStyle,
             borderRadius: '12px',
+            pointerEvents: 'none',
+            zIndex: 1,
           }}
         />
         {(!isMacOS || showTitleBar) && (
@@ -565,7 +626,7 @@ function App() {
             <TitleBar />
           </div>
         )}
-        <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]">
+        <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]" style={{ zIndex: 10 }}>
           <Sidebar
             activeTab={activeTab}
             onTabChange={handleTabChange}

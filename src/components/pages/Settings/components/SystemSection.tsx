@@ -15,6 +15,9 @@ interface SystemSectionProps {
   onToggleAutoCheckUpdate: (enabled: boolean) => void;
   closeToTrayEnabled: boolean;
   onToggleCloseToTray: (enabled: boolean) => void;
+  guardEnabled: boolean;
+  guardLoading: boolean;
+  onToggleGuard: (enabled: boolean) => void;
 }
 
 export function SystemSection({
@@ -25,6 +28,9 @@ export function SystemSection({
   onToggleAutoCheckUpdate,
   closeToTrayEnabled,
   onToggleCloseToTray,
+  guardEnabled,
+  guardLoading,
+  onToggleGuard,
 }: SystemSectionProps) {
   return (
     <div className="space-y-3">
@@ -90,7 +96,10 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <Item variant="outline" className="border-0">
+        <Item
+          variant="outline"
+          className="border-0 border-b border-border/60 last:border-0"
+        >
           <ItemContent>
             <ItemTitle>关闭窗口时最小化到托盘</ItemTitle>
             <ItemDescription className="text-xs">
@@ -109,6 +118,32 @@ export function SystemSection({
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
                   closeToTrayEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </ItemActions>
+        </Item>
+
+        <Item variant="outline" className="border-0">
+          <ItemContent>
+            <ItemTitle>进程守护</ItemTitle>
+            <ItemDescription className="text-xs">
+              自动监控隧道进程，意外退出时自动重启
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <button
+              onClick={() => onToggleGuard(!guardEnabled)}
+              disabled={guardLoading}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                guardEnabled ? "bg-foreground" : "bg-muted"
+              } ${guardLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              role="switch"
+              aria-checked={guardEnabled}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                  guardEnabled ? "translate-x-6" : "translate-x-1"
                 }`}
               />
             </button>

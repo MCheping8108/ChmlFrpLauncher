@@ -60,7 +60,29 @@ export const getMimeType = (filePath: string): string => {
     gif: "image/gif",
     webp: "image/webp",
     bmp: "image/bmp",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    ogv: "video/ogg",
+    mov: "video/quicktime",
   };
   return mimeTypes[ext || ""] || "image/png";
+};
+
+export const isVideoFile = (filePath: string): boolean => {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  const videoExts = ["mp4", "webm", "ogv", "mov"];
+  return videoExts.includes(ext || "");
+};
+
+export const isVideoMimeType = (mimeType: string): boolean => {
+  return mimeType.startsWith("video/");
+};
+
+export const getBackgroundType = (dataUrl: string | null): "image" | "video" | null => {
+  if (!dataUrl) return null;
+  if (dataUrl.startsWith("data:video/")) return "video";
+  if (dataUrl.startsWith("data:image/")) return "image";
+  // 向后兼容：如果没有明确的类型，假设是图片
+  return "image";
 };
 

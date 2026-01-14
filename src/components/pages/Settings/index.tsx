@@ -5,6 +5,7 @@ import { useAutostart } from "./hooks/useAutostart";
 import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
+import { useProcessGuard } from "./hooks/useProcessGuard";
 import { getInitialBypassProxy, getInitialShowTitleBar } from "./utils";
 import { AppearanceSection } from "./components/AppearanceSection";
 import { NetworkSection } from "./components/NetworkSection";
@@ -55,12 +56,23 @@ export function Settings() {
     handleToggleCloseToTray,
   } = useCloseBehavior();
 
+  const {
+    guardEnabled,
+    guardLoading,
+    handleToggleGuard,
+  } = useProcessGuard();
+
   const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
     getInitialBypassProxy(),
   );
   const [showTitleBar, setShowTitleBar] = useState<boolean>(() =>
     getInitialShowTitleBar(),
   );
+  const [frostedGlassEnabled, setFrostedGlassEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("frostedGlassEnabled");
+    return stored === "true";
+  });
 
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
@@ -92,6 +104,8 @@ export function Settings() {
           setOverlayOpacity={setOverlayOpacity}
           blur={blur}
           setBlur={setBlur}
+          frostedGlassEnabled={frostedGlassEnabled}
+          setFrostedGlassEnabled={setFrostedGlassEnabled}
           onSelectBackgroundImage={handleSelectBackgroundImage}
           onClearBackgroundImage={handleClearBackgroundImage}
         />
@@ -109,6 +123,9 @@ export function Settings() {
           onToggleAutoCheckUpdate={handleToggleAutoCheckUpdate}
           closeToTrayEnabled={closeToTrayEnabled}
           onToggleCloseToTray={handleToggleCloseToTray}
+          guardEnabled={guardEnabled}
+          guardLoading={guardLoading}
+          onToggleGuard={handleToggleGuard}
         />
 
         <UpdateSection

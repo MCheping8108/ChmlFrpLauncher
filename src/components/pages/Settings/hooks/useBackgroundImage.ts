@@ -43,8 +43,16 @@ export function useBackgroundImage() {
         multiple: false,
         filters: [
           {
+            name: "图片和视频",
+            extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "mp4", "webm", "ogv", "mov"],
+          },
+          {
             name: "图片",
             extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp"],
+          },
+          {
+            name: "视频",
+            extensions: ["mp4", "webm", "ogv", "mov"],
           },
         ],
       });
@@ -63,13 +71,14 @@ export function useBackgroundImage() {
         const dataUrl = `data:${mimeType};base64,${base64}`;
 
         setBackgroundImage(dataUrl);
-        toast.success("背景图设置成功", {
+        const isVideo = mimeType.startsWith("video/");
+        toast.success(isVideo ? "背景视频设置成功" : "背景图设置成功", {
           duration: 2000,
         });
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      toast.error(`选择图片失败: ${errorMsg}`, {
+      toast.error(`选择文件失败: ${errorMsg}`, {
         duration: 3000,
       });
     } finally {
@@ -79,7 +88,7 @@ export function useBackgroundImage() {
 
   const handleClearBackgroundImage = () => {
     setBackgroundImage(null);
-    toast.success("已清除背景图", {
+    toast.success("已清除背景", {
       duration: 2000,
     });
   };

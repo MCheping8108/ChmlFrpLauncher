@@ -5,17 +5,17 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import type { Tunnel } from "@/services/api";
 import { deleteTunnel } from "@/services/api";
-import type { TunnelProgress } from "../types";
+import { customTunnelService } from "@/services/customTunnelService";
+import type { TunnelProgress, UnifiedTunnel } from "../types";
 import { toast } from "sonner";
 
 interface TunnelCardProps {
-  tunnel: Tunnel;
+  tunnel: UnifiedTunnel;
   isRunning: boolean;
   isToggling: boolean;
   progress: TunnelProgress | undefined;
-  onToggle: (tunnel: Tunnel, enabled: boolean) => void;
+  onToggle: (tunnel: UnifiedTunnel, enabled: boolean) => void;
   onRefresh: () => void;
 }
 
@@ -31,11 +31,20 @@ export function TunnelCard({
   const isError = progress?.isError ?? false;
   const isSuccess = progress?.isSuccess ?? false;
 
+  const isCustom = tunnel.type === "custom";
+  const isApi = tunnel.type === "api";
+
   const handleCopyLink = async () => {
     try {
-      const isHttpType = tunnel.type.toUpperCase() === 'HTTP' || tunnel.type.toUpperCase() === 'HTTPS';
-      const linkAddress = isHttpType ? `${tunnel.dorp}` : `${tunnel.ip}:${tunnel.dorp}`;
-      await navigator.clipboard.writeText(linkAddress);
+      if (isApi) {
+        const isHttpType = tunnel.data.type.toUpperCase() === 'HTTP' || tunnel.data.type.toUpperCase() === 'HTTPS';
+        const linkAddress = isHttpType ? `${tunnel.data.dorp}` : `${tunnel.data.ip}:${tunnel.data.dorp}`;
+        await navigator.clipboard.writeText(linkAddress);
+      } else {
+        // 自定义隧道从配置中获取的信息
+        const serverAddr = tunnel.data.server_addr || "未知";
+        await navigator.clipboard.writeText(serverAddr);
+      }
     } catch (error) {
       console.error("Failed to copy:", error);
     }
@@ -43,7 +52,11 @@ export function TunnelCard({
 
   const handleDelete = async () => {
     try {
-      await deleteTunnel(tunnel.id);
+      if (isApi) {
+        await deleteTunnel(tunnel.data.id);
+      } else {
+        await customTunnelService.deleteCustomTunnel(tunnel.data.id);
+      }
       toast.success("删除成功");
       onRefresh();
     } catch (error) {
@@ -74,14 +87,14 @@ export function TunnelCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium text-foreground truncate">
-                  {tunnel.name}
+                  {tunnel.data.name}
                 </h3>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground uppercase">
-                  {tunnel.type}
+                  {isCustom ? (tunnel.data.tunnel_type || "自定义") : tunnel.data.type}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {tunnel.node}
+                {isApi ? tunnel.data.node : (tunnel.data.server_addr || "-")}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer ml-2">
@@ -102,38 +115,62 @@ export function TunnelCard({
           </div>
 
           <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">本地地址</span>
-              <span className="font-mono">
-                {tunnel.localip}:{tunnel.nport}
-              </span>
-            </div>
-            <div 
-              className="flex items-center justify-between cursor-pointer"
-              onClick={handleCopyLink}
-              title="点击复制"
-            >
-              <span className="text-muted-foreground">链接地址</span>
-              <span className="font-mono">
-                {tunnel.type.toUpperCase() === 'HTTP' || tunnel.type.toUpperCase() === 'HTTPS' 
-                  ? tunnel.dorp 
-                  : `${tunnel.ip}:${tunnel.dorp}`}
-              </span>
-            </div>
-
-            {tunnel.nodestate && (
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">节点</span>
-                <span
-                  className={
-                    tunnel.nodestate === "online"
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                  }
+            {isApi ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">本地地址</span>
+                  <span className="font-mono">
+                    {tunnel.data.localip}:{tunnel.data.nport}
+                  </span>
+                </div>
+                <div 
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={handleCopyLink}
+                  title="点击复制"
                 >
-                  {tunnel.nodestate === "online" ? "在线" : "离线"}
-                </span>
-              </div>
+                  <span className="text-muted-foreground">链接地址</span>
+                  <span className="font-mono truncate">
+                    {tunnel.data.type.toUpperCase() === 'HTTP' || tunnel.data.type.toUpperCase() === 'HTTPS' 
+                      ? tunnel.data.dorp 
+                      : `${tunnel.data.ip}:${tunnel.data.dorp}`}
+                  </span>
+                </div>
+                {tunnel.data.nodestate && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">节点</span>
+                    <span
+                      className={
+                        tunnel.data.nodestate === "online"
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {tunnel.data.nodestate === "online" ? "在线" : "离线"}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">本地地址</span>
+                  <span className="font-mono">
+                    {tunnel.data.local_ip || "127.0.0.1"}:{tunnel.data.local_port || "-"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">链接地址</span>
+                  <span className="font-mono truncate">
+                    {tunnel.data.server_addr || "-"}:{tunnel.data.remote_port || tunnel.data.server_port || "-"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">节点</span>
+                  <span className="text-foreground">
+                    自定义
+                  </span>
+                </div>
+              </>
             )}
           </div>
         </div>

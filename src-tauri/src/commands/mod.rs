@@ -5,6 +5,8 @@ pub mod autostart;
 pub mod http;
 pub mod tray;
 pub mod ping;
+pub mod custom_tunnel;
+pub mod process_guard;
 
 // 重新导出所有命令函数，方便使用
 pub use download::*;
@@ -13,4 +15,5 @@ pub use autostart::*;
 pub use http::*;
 pub use ping::*;
 pub use tray::*;
+pub use custom_tunnel::*;
 

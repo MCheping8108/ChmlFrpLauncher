@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Home as HomeIcon,
   List,
@@ -10,6 +11,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
+import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
 import {
   clearStoredUser,
   login,
@@ -243,14 +245,19 @@ export function Sidebar({
           )}
         </div>
 
-        {loginOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setLoginOpen(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
-              onClick={(e) => e.stopPropagation()}
+        <Dialog
+          open={loginOpen}
+          onOpenChange={(open) => {
+            setLoginOpen(open);
+            if (!open) {
+              setError("");
+            }
+          }}
+        >
+          <DialogPortal>
+            <DialogOverlay className="z-[9999] backdrop-blur-sm" />
+            <DialogPrimitive.Content
+              className="fixed top-[50%] left-[50%] z-[10000] w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 duration-300"
             >
               {/* 头部 */}
               <div className="flex items-center justify-between mb-6">
@@ -356,9 +363,9 @@ export function Sidebar({
                   </button>
                 </p>
               </div>
-            </div>
-          </div>
-        )}
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        </Dialog>
       </div>
     </div>
   );

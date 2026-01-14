@@ -11,25 +11,25 @@ import { restoreProgressFromLogs } from "../utils";
 
 export function useTunnelProgress(
   tunnels: Tunnel[],
-  runningTunnels: Set<number>,
-  setRunningTunnels: Dispatch<SetStateAction<Set<number>>>,
+  runningTunnels: Set<string>,
+  setRunningTunnels: Dispatch<SetStateAction<Set<string>>>,
 ) {
   const [tunnelProgress, setTunnelProgress] = useState<
-    Map<number, TunnelProgress>
+    Map<string, TunnelProgress>
   >(() => {
-    const cached = new Map(tunnelProgressCache);
+    const cached = new Map<string, TunnelProgress>();
     const logs = logStore.getLogs();
     const restored = restoreProgressFromLogs(logs);
     for (const [tunnelId, progress] of restored) {
-      cached.set(tunnelId, progress);
+      cached.set(`api_${tunnelId}`, progress);
     }
     return cached;
   });
   const [fixingTunnels, setFixingTunnels] = useState<Set<number>>(new Set());
-  const timeoutRefs = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+  const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
-  const successTimeoutRefs = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+  const successTimeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
   const processedErrorsRef = useRef<Set<string>>(new Set());
@@ -82,6 +82,7 @@ export function useTunnelProgress(
 
         const tunnel = tunnels.find((t) => t.id === tunnelId);
         if (tunnel) {
+          const tunnelKey = `api_${tunnelId}`;
           setTunnelProgress((prev) => {
             const next = new Map(prev);
             const resetProgress = {
@@ -89,7 +90,7 @@ export function useTunnelProgress(
               isError: false,
               isSuccess: false,
             };
-            next.set(tunnelId, resetProgress);
+            next.set(tunnelKey, resetProgress);
             tunnelProgressCache.set(tunnelId, resetProgress);
             return next;
           });
@@ -102,7 +103,7 @@ export function useTunnelProgress(
           }
 
           await frpcManager.startTunnel(tunnelId, user.usertoken);
-          setRunningTunnels((prev) => new Set(prev).add(tunnelId));
+          setRunningTunnels((prev) => new Set(prev).add(tunnelKey));
 
           let hasChecked = false;
           let hasSuccess = false;
@@ -143,8 +144,9 @@ export function useTunnelProgress(
                 "因为隧道重复启动导致映射启动失败。系统自动修复失败，请更换外网端口或节点",
                 { duration: 8000 },
               );
+              const tunnelKey = `api_${tunnelId}`;
               setTunnelProgress((prev) => {
-                const current = prev.get(tunnelId);
+                const current = prev.get(tunnelKey);
                 if (current) {
                   const errorProgress = {
                     ...current,
@@ -153,7 +155,7 @@ export function useTunnelProgress(
                     isSuccess: false,
                   };
                   tunnelProgressCache.set(tunnelId, errorProgress);
-                  return new Map(prev).set(tunnelId, errorProgress);
+                  return new Map(prev).set(tunnelKey, errorProgress);
                 }
                 return prev;
               });
@@ -171,8 +173,9 @@ export function useTunnelProgress(
         const message =
           err instanceof Error ? err.message : "自动修复失败";
         toast.error(message, { duration: 5000 });
+        const tunnelKey = `api_${tunnelId}`;
         setTunnelProgress((prev) => {
-          const current = prev.get(tunnelId);
+          const current = prev.get(tunnelKey);
           if (current) {
             const errorProgress = {
               ...current,
@@ -180,7 +183,7 @@ export function useTunnelProgress(
               isError: true,
             };
             tunnelProgressCache.set(tunnelId, errorProgress);
-            return new Map(prev).set(tunnelId, errorProgress);
+            return new Map(prev).set(tunnelKey, errorProgress);
           }
           return prev;
         });
@@ -210,8 +213,9 @@ export function useTunnelProgress(
           setTunnelProgress((prev) => {
             const merged = new Map(prev);
             for (const [tunnelId, progress] of restored) {
+              const tunnelKey = `api_${tunnelId}`;
               if (!runningSet.has(tunnelId)) {
-                merged.set(tunnelId, {
+                merged.set(tunnelKey, {
                   progress: 0,
                   isError: false,
                   isSuccess: false,
@@ -222,7 +226,7 @@ export function useTunnelProgress(
                   isSuccess: false,
                 });
               } else {
-                merged.set(tunnelId, { ...progress, isSuccess: false });
+                merged.set(tunnelKey, { ...progress, isSuccess: false });
                 tunnelProgressCache.set(tunnelId, {
                   ...progress,
                   isSuccess: false,
@@ -245,10 +249,11 @@ export function useTunnelProgress(
 
       const latestLog = logs[logs.length - 1];
       const tunnelId = latestLog.tunnel_id;
+      const tunnelKey = `api_${tunnelId}`;
       const message = latestLog.message;
 
       setTunnelProgress((prev) => {
-        const current = prev.get(tunnelId);
+        const current = prev.get(tunnelKey);
         if (!current && !message.includes("frpc 进程已启动")) {
           return prev;
         }
@@ -259,12 +264,12 @@ export function useTunnelProgress(
         if (message.includes("frpc 进程已启动")) {
           newProgress.startTime = Date.now();
           newProgress.progress = 10;
-          if (timeoutRefs.current.has(tunnelId)) {
-            clearTimeout(timeoutRefs.current.get(tunnelId)!);
+          if (timeoutRefs.current.has(tunnelKey)) {
+            clearTimeout(timeoutRefs.current.get(tunnelKey)!);
           }
           const timeout = setTimeout(() => {
             setTunnelProgress((prev) => {
-              const current = prev.get(tunnelId);
+              const current = prev.get(tunnelKey);
               if (current && current.progress < 100 && !current.isError) {
                 const errorProgress = {
                   ...current,
@@ -272,12 +277,12 @@ export function useTunnelProgress(
                   isError: true,
                 };
                 tunnelProgressCache.set(tunnelId, errorProgress);
-                return new Map(prev).set(tunnelId, errorProgress);
+                return new Map(prev).set(tunnelKey, errorProgress);
               }
               return prev;
             });
           }, 10000);
-          timeoutRefs.current.set(tunnelId, timeout);
+          timeoutRefs.current.set(tunnelKey, timeout);
         } else if (message.includes("从ChmlFrp API获取配置文件")) {
           newProgress.progress = 20;
         } else if (message.includes("已写入配置文件")) {
@@ -290,29 +295,29 @@ export function useTunnelProgress(
           newProgress.progress = 100;
           newProgress.isError = false;
           newProgress.isSuccess = true;
-          if (timeoutRefs.current.has(tunnelId)) {
-            clearTimeout(timeoutRefs.current.get(tunnelId)!);
-            timeoutRefs.current.delete(tunnelId);
+          if (timeoutRefs.current.has(tunnelKey)) {
+            clearTimeout(timeoutRefs.current.get(tunnelKey)!);
+            timeoutRefs.current.delete(tunnelKey);
           }
-          if (successTimeoutRefs.current.has(tunnelId)) {
-            clearTimeout(successTimeoutRefs.current.get(tunnelId)!);
+          if (successTimeoutRefs.current.has(tunnelKey)) {
+            clearTimeout(successTimeoutRefs.current.get(tunnelKey)!);
           }
           const successTimeout = setTimeout(() => {
             setTunnelProgress((prev) => {
-              const current = prev.get(tunnelId);
+              const current = prev.get(tunnelKey);
               if (current) {
                 const updated = {
                   ...current,
                   isSuccess: false,
                 };
                 tunnelProgressCache.set(tunnelId, updated);
-                return new Map(prev).set(tunnelId, updated);
+                return new Map(prev).set(tunnelKey, updated);
               }
               return prev;
             });
-            successTimeoutRefs.current.delete(tunnelId);
+            successTimeoutRefs.current.delete(tunnelKey);
           }, 2000);
-          successTimeoutRefs.current.set(tunnelId, successTimeout);
+          successTimeoutRefs.current.set(tunnelKey, successTimeout);
         } else if (
           message.includes("启动失败") &&
           message.includes("already exists")
@@ -358,7 +363,7 @@ export function useTunnelProgress(
           }
         }
 
-        const updated = new Map(prev).set(tunnelId, { ...newProgress });
+        const updated = new Map(prev).set(tunnelKey, { ...newProgress });
         tunnelProgressCache.set(tunnelId, { ...newProgress });
         return updated;
       });
@@ -387,11 +392,12 @@ export function useTunnelProgress(
 
     const checkRunningStatus = async () => {
       for (const tunnel of tunnels) {
+        const tunnelKey = `api_${tunnel.id}`;
         const isRunning = await frpcManager.isTunnelRunning(tunnel.id);
         if (!isRunning) {
-          if (runningTunnels.has(tunnel.id)) {
+          if (runningTunnels.has(tunnelKey)) {
             setTunnelProgress((prev) => {
-              const current = prev.get(tunnel.id);
+              const current = prev.get(tunnelKey);
               if (current && current.progress < 100) {
                 const errorProgress = {
                   ...current,
@@ -400,13 +406,13 @@ export function useTunnelProgress(
                   isSuccess: false,
                 };
                 tunnelProgressCache.set(tunnel.id, errorProgress);
-                return new Map(prev).set(tunnel.id, errorProgress);
+                return new Map(prev).set(tunnelKey, errorProgress);
               }
               return prev;
             });
           } else {
             setTunnelProgress((prev) => {
-              const current = prev.get(tunnel.id);
+              const current = prev.get(tunnelKey);
               if (current && current.progress > 0) {
                 const cleared = {
                   progress: 0,
@@ -414,13 +420,13 @@ export function useTunnelProgress(
                   isSuccess: false,
                 };
                 tunnelProgressCache.set(tunnel.id, cleared);
-                return new Map(prev).set(tunnel.id, cleared);
+                return new Map(prev).set(tunnelKey, cleared);
               }
               return prev;
             });
-            if (successTimeoutRefs.current.has(tunnel.id)) {
-              clearTimeout(successTimeoutRefs.current.get(tunnel.id)!);
-              successTimeoutRefs.current.delete(tunnel.id);
+            if (successTimeoutRefs.current.has(tunnelKey)) {
+              clearTimeout(successTimeoutRefs.current.get(tunnelKey)!);
+              successTimeoutRefs.current.delete(tunnelKey);
             }
           }
         }

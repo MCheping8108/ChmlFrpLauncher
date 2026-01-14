@@ -1,31 +1,23 @@
 name: Tauri Build & Release
 
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - main
-
   push:
     tags:
       - "v*"
 
 jobs:
   release:
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.merged == true &&
-       github.event.pull_request.base.ref == 'main' &&
-       github.event.pull_request.head.ref == 'develop')
-
     name: Tauri Build (${{ matrix.platform }})
     runs-on: ${{ matrix.platform }}
 
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - platform: macos-latest
+          - platform: macos-13
+          - platform: ubuntu-latest
+          - platform: windows-latest
 
     steps:
       - name: Checkout
@@ -47,6 +39,23 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
+      - name: Enable sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-latest'
         run: |
@@ -65,17 +74,37 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Extract changelog for current version
+        id: changelog
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          echo "Extracting changelog for $VERSION"
+          awk "
+            /^## ${VERSION}$/ {flag=1; next}
+            /^## v/ && flag {exit}
+            flag {print}
+          " CHANGELOG.md > RELEASE_NOTES.md
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Build & Release with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          RUSTC_WRAPPER: sccache
         with:
           packageManager: pnpm
           includeRelease: true
           tagName: ${{ github.ref_name }}
           releaseName: 'ChmlFrpLauncher ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download and install this version.'
+          releaseBody: |
+            ## 🚀 更新内容
+
+            ${{ steps.changelog.outputs.changelog }}
+            
           releaseDraft: false
           prerelease: false

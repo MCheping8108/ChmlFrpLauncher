@@ -22,6 +22,8 @@ interface AppearanceSectionProps {
   setOverlayOpacity: (value: number) => void;
   blur: number;
   setBlur: (value: number) => void;
+  frostedGlassEnabled: boolean;
+  setFrostedGlassEnabled: (value: boolean) => void;
   onSelectBackgroundImage: () => void;
   onClearBackgroundImage: () => void;
 }
@@ -40,6 +42,8 @@ export function AppearanceSection({
   setOverlayOpacity,
   blur,
   setBlur,
+  frostedGlassEnabled,
+  setFrostedGlassEnabled,
   onSelectBackgroundImage,
   onClearBackgroundImage,
 }: AppearanceSectionProps) {
@@ -149,9 +153,9 @@ export function AppearanceSection({
 
         <Item variant="outline" className="border-0">
           <ItemContent>
-            <ItemTitle>背景图</ItemTitle>
+            <ItemTitle>背景</ItemTitle>
             <ItemDescription className="text-xs">
-              设置应用背景图片
+              设置应用背景图片或视频
               {backgroundImage && (
                 <span className="ml-1 text-muted-foreground">(已设置)</span>
               )}
@@ -168,7 +172,7 @@ export function AppearanceSection({
                     : "bg-foreground text-background hover:opacity-90"
                 }`}
               >
-                {isSelectingImage ? "选择中..." : "选择图片"}
+                {isSelectingImage ? "选择中..." : "选择文件"}
               </button>
               {backgroundImage && (
                 <button
@@ -189,9 +193,42 @@ export function AppearanceSection({
               className="border-0 border-t border-border/60"
             >
               <ItemContent>
+                <ItemTitle>毛玻璃效果</ItemTitle>
+                <ItemDescription className="text-xs">
+                  为所有元素应用毛玻璃透明效果
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => {
+                    const newValue = !frostedGlassEnabled;
+                    setFrostedGlassEnabled(newValue);
+                    localStorage.setItem("frostedGlassEnabled", newValue.toString());
+                    window.dispatchEvent(new Event("frostedGlassChanged"));
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    frostedGlassEnabled ? "bg-foreground" : "bg-muted"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={frostedGlassEnabled}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      frostedGlassEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+
+            <Item
+              variant="outline"
+              className="border-0 border-t border-border/60"
+            >
+              <ItemContent>
                 <ItemTitle>遮罩透明度</ItemTitle>
                 <ItemDescription className="text-xs">
-                  调整背景图遮罩的透明度 ({overlayOpacity}%)
+                  调整背景遮罩的透明度 ({overlayOpacity}%)
                 </ItemDescription>
               </ItemContent>
               <ItemActions>
@@ -220,7 +257,7 @@ export function AppearanceSection({
               <ItemContent>
                 <ItemTitle>模糊度</ItemTitle>
                 <ItemDescription className="text-xs">
-                  调整背景图的模糊效果 ({blur}px)
+                  调整背景的模糊效果 ({blur}px)
                 </ItemDescription>
               </ItemContent>
               <ItemActions>

@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Child;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicBool;
 
 // 下载进度结构
 #[derive(Serialize, Clone)]
@@ -57,6 +58,37 @@ impl FrpcProcesses {
     pub fn new() -> Self {
         Self {
             processes: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+// 隧道类型
+#[derive(Clone, Debug)]
+pub enum TunnelType {
+    Api { user_token: String },
+    Custom { original_id: String },
+}
+
+// 进程守护信息
+#[derive(Clone)]
+pub struct ProcessGuardInfo {
+    pub tunnel_id: i32,
+    pub tunnel_type: TunnelType,
+}
+
+// 守护进程状态管理
+pub struct ProcessGuardState {
+    pub enabled: Arc<AtomicBool>,
+    pub guarded_processes: Arc<Mutex<HashMap<i32, ProcessGuardInfo>>>,
+    pub manually_stopped: Arc<Mutex<std::collections::HashSet<i32>>>,
+}
+
+impl ProcessGuardState {
+    pub fn new() -> Self {
+        Self {
+            enabled: Arc::new(AtomicBool::new(false)),
+            guarded_processes: Arc::new(Mutex::new(HashMap::new())),
+            manually_stopped: Arc::new(Mutex::new(std::collections::HashSet::new())),
         }
     }
 }
