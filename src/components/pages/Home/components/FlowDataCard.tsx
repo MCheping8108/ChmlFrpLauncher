@@ -6,6 +6,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ArrowUp, ArrowDown } from "lucide-react";
 
 interface FlowDataCardProps {
   flowData: FlowPoint[];
@@ -33,11 +34,30 @@ function generateDefaultData() {
   return data;
 }
 
+function formatBytes(bytes: number) {
+  if (bytes === 0) return "0 MB";
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1024) {
+    return `${(mb / 1024).toFixed(2)} GB`;
+  }
+  return `${mb.toFixed(2)} MB`;
+}
+
 export function FlowDataCard({
   flowData,
   flowLoading,
   flowError,
 }: FlowDataCardProps) {
+  // 计算总流量
+  const totalUpload = flowData.reduce(
+    (acc, item) => acc + (item.traffic_in || 0),
+    0,
+  );
+  const totalDownload = flowData.reduce(
+    (acc, item) => acc + (item.traffic_out || 0),
+    0,
+  );
+
   // 将流量数据转换为 MB
   const chartData =
     flowData.length > 0
@@ -67,15 +87,41 @@ export function FlowDataCard({
 
   return (
     <div className="border border-border/60 rounded-lg p-5 bg-card md:col-span-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-sm font-semibold text-foreground">近7日流量</h2>
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--chart-1))]"></span>
+              <ArrowUp className="w-3 h-3" />
+              上传
+            </div>
+            <span className="font-medium text-foreground">
+              {formatBytes(totalUpload)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--chart-2))]"></span>
+              <ArrowDown className="w-3 h-3" />
+              下载
+            </div>
+            <span className="font-medium text-foreground">
+              {formatBytes(totalDownload)}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-4">
         {flowLoading ? (
-          <div className="text-sm text-muted-foreground">加载中...</div>
+          <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+            加载中...
+          </div>
         ) : flowError ? (
-          <div className="text-sm text-destructive">{flowError}</div>
+          <div className="h-[200px] flex items-center justify-center text-sm text-destructive">
+            {flowError}
+          </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
             <AreaChart data={chartData}>
@@ -108,6 +154,7 @@ export function FlowDataCard({
               <CartesianGrid
                 strokeDasharray="3 3"
                 className="stroke-border/30"
+                vertical={false}
               />
               <XAxis
                 dataKey="date"

@@ -153,20 +153,23 @@ export function Sidebar({
                   <button
                     onClick={() => handleMenuClick(item.id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm group",
+                      "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm group relative overflow-hidden",
                       isActive
-                        ? "bg-foreground/[0.08] text-foreground border border-foreground/10"
-                        : "text-foreground/65 hover:text-foreground hover:bg-foreground/[0.04]",
+                        ? "bg-foreground/[0.08] text-foreground font-semibold shadow-sm"
+                        : "text-foreground/60 hover:text-foreground hover:bg-foreground/[0.04]",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-foreground/40 rounded-r-full" />
+                    )}
                     <Icon
                       className={cn(
                         "w-[18px] h-[18px] transition-transform duration-200",
-                        isActive ? "" : "group-hover:scale-110",
+                        isActive ? "text-foreground" : "group-hover:scale-110",
                       )}
                     />
-                    <span className="font-medium tracking-tight">
+                    <span className="tracking-tight">
                       {item.label}
                     </span>
                   </button>
