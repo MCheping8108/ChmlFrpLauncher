@@ -167,6 +167,9 @@ pub fn run() {
                     }
                 }
             }
-            _ => {}
+            #[cfg(not(target_os = "macos"))]
+            _ => {
+                let _ = app_handle;
+            }
         });
 }
