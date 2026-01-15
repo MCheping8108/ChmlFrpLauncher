@@ -35,8 +35,13 @@ pub fn run() {
                 .item(&quit_item)
                 .build()?;
 
+            let tray_icon = app
+                .default_window_icon()
+                .cloned()
+                .expect("Failed to load tray icon: default window icon not found");
+
             let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_icon)
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => {

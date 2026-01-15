@@ -8,6 +8,7 @@ export function useTheme() {
   );
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
   const prevFollowSystemRef = useRef(followSystem);
+  const isViewTransitionRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem("themeFollowSystem", followSystem.toString());
@@ -56,6 +57,14 @@ export function useTheme() {
   }, [followSystem]);
 
   useEffect(() => {
+    if (isViewTransitionRef.current) {
+      if (!followSystem) {
+        localStorage.setItem("theme", theme);
+      }
+      window.dispatchEvent(new Event("themeChanged"));
+      return;
+    }
+
     const root = document.documentElement;
     const hasDarkClass = root.classList.contains("dark");
     const shouldBeDark = theme === "dark";
@@ -77,5 +86,6 @@ export function useTheme() {
     setFollowSystem,
     theme,
     setTheme,
+    isViewTransitionRef,
   };
 }

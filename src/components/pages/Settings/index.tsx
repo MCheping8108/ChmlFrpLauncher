@@ -24,7 +24,7 @@ export function Settings() {
     typeof navigator !== "undefined" &&
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
-  const { followSystem, setFollowSystem, theme, setTheme } = useTheme();
+  const { followSystem, setFollowSystem, theme, setTheme, isViewTransitionRef } = useTheme();
 
   const {
     backgroundImage,
@@ -107,6 +107,7 @@ export function Settings() {
           setFollowSystem={setFollowSystem}
           theme={theme}
           setTheme={setTheme}
+          isViewTransitionRef={isViewTransitionRef}
           showTitleBar={showTitleBar}
           setShowTitleBar={setShowTitleBar}
           backgroundImage={backgroundImage}

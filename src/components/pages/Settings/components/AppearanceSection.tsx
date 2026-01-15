@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import type { ThemeMode } from "../types";
 import type { EffectType } from "../utils";
 import { getBackgroundType } from "../utils";
+import type { MutableRefObject } from "react";
 
 interface AppearanceSectionProps {
   isMacOS: boolean;
@@ -19,6 +20,7 @@ interface AppearanceSectionProps {
   setFollowSystem: (value: boolean) => void;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
+  isViewTransitionRef: MutableRefObject<boolean>;
   showTitleBar: boolean;
   setShowTitleBar: (value: boolean) => void;
   backgroundImage: string | null;
@@ -43,6 +45,7 @@ export function AppearanceSection({
   setFollowSystem,
   theme,
   setTheme,
+  isViewTransitionRef,
   showTitleBar,
   setShowTitleBar,
   backgroundImage,
@@ -76,6 +79,7 @@ export function AppearanceSection({
       Math.max(y, window.innerHeight - y),
     );
 
+    isViewTransitionRef.current = true;
     const transition = document.startViewTransition(() => {
       flushSync(() => {
         setTheme(newTheme);
@@ -95,7 +99,7 @@ export function AppearanceSection({
       `circle(${endRadius}px at ${x}px ${y}px)`,
     ];
 
-    document.documentElement.animate(
+    const animation = document.documentElement.animate(
       {
         clipPath: clipPath,
       },
@@ -105,6 +109,10 @@ export function AppearanceSection({
         pseudoElement: "::view-transition-new(root)",
       },
     );
+    
+    animation.addEventListener("finish", () => {
+      isViewTransitionRef.current = false;
+    });
   };
 
   return (
