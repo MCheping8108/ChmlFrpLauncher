@@ -69,7 +69,6 @@ export function AppearanceSection({
       return;
     }
 
-    // Use switch center position if event is not provided
     const x = event?.clientX ?? window.innerWidth / 2;
     const y = event?.clientY ?? window.innerHeight / 2;
     const endRadius = Math.hypot(
@@ -81,7 +80,6 @@ export function AppearanceSection({
       flushSync(() => {
         setTheme(newTheme);
       });
-      // Manually sync DOM for transition to ensure it captures the new state
       const root = document.documentElement;
       if (newTheme === "dark") {
         root.classList.add("dark");
