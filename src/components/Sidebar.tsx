@@ -18,7 +18,7 @@ import {
   saveStoredUser,
   type StoredUser,
 } from "@/services/api";
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 interface SidebarProps {
   activeTab: string;
@@ -47,9 +47,15 @@ export function Sidebar({
       setShowTitleBar(stored !== "false");
     };
 
-    window.addEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    window.addEventListener(
+      "titleBarVisibilityChanged",
+      handleTitleBarVisibilityChange,
+    );
     return () => {
-      window.removeEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+      window.removeEventListener(
+        "titleBarVisibilityChanged",
+        handleTitleBarVisibilityChange,
+      );
     };
   }, []);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -99,7 +105,9 @@ export function Sidebar({
     onTabChange(itemId);
   };
 
-  const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const isMacOS =
+    typeof navigator !== "undefined" &&
+    navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
   return (
     <div className="relative w-60 border-r border-sidebar-border/40 bg-sidebar overflow-hidden">
@@ -112,8 +120,11 @@ export function Sidebar({
             className="h-8 flex-shrink-0 flex items-start pt-3 pl-5"
           />
         ) : null}
-        <div 
-          className={cn("px-5 pb-5", isMacOS && !showTitleBar ? "pt-4" : "pt-6")}
+        <div
+          className={cn(
+            "px-5 pb-5",
+            isMacOS && !showTitleBar ? "pt-4" : "pt-6",
+          )}
           {...(isMacOS && !showTitleBar && { "data-tauri-drag-region": true })}
         >
           <div className="flex items-center gap-2.5">
@@ -142,22 +153,23 @@ export function Sidebar({
                   <button
                     onClick={() => handleMenuClick(item.id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm group",
+                      "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm group relative overflow-hidden",
                       isActive
-                        ? "bg-foreground/[0.08] text-foreground border border-foreground/10"
-                        : "text-foreground/65 hover:text-foreground hover:bg-foreground/[0.04]",
+                        ? "bg-foreground/[0.08] text-foreground font-semibold shadow-sm"
+                        : "text-foreground/60 hover:text-foreground hover:bg-foreground/[0.04]",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-foreground/40 rounded-r-full" />
+                    )}
                     <Icon
                       className={cn(
                         "w-[18px] h-[18px] transition-transform duration-200",
-                        isActive ? "" : "group-hover:scale-110",
+                        isActive ? "text-foreground" : "group-hover:scale-110",
                       )}
                     />
-                    <span className="font-medium tracking-tight">
-                      {item.label}
-                    </span>
+                    <span className="tracking-tight">{item.label}</span>
                   </button>
                 </li>
               );
@@ -256,9 +268,7 @@ export function Sidebar({
         >
           <DialogPortal>
             <DialogOverlay className="z-[9999] backdrop-blur-sm" />
-            <DialogPrimitive.Content
-              className="fixed top-[50%] left-[50%] z-[10000] w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 duration-300"
-            >
+            <DialogPrimitive.Content className="fixed top-[50%] left-[50%] z-[10000] w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 duration-300">
               {/* 头部 */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">

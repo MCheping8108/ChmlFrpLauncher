@@ -13,6 +13,8 @@ export function useTunnelProgress(
   tunnels: Tunnel[],
   runningTunnels: Set<string>,
   setRunningTunnels: Dispatch<SetStateAction<Set<string>>>,
+  onTunnelStartSuccess?: (tunnelKey: string) => void,
+  onTunnelStartError?: (tunnelKey: string) => void,
 ) {
   const [tunnelProgress, setTunnelProgress] = useState<
     Map<string, TunnelProgress>
@@ -33,6 +35,13 @@ export function useTunnelProgress(
     new Map(),
   );
   const processedErrorsRef = useRef<Set<string>>(new Set());
+  const onTunnelStartSuccessRef = useRef(onTunnelStartSuccess);
+  const onTunnelStartErrorRef = useRef(onTunnelStartError);
+
+  useEffect(() => {
+    onTunnelStartSuccessRef.current = onTunnelStartSuccess;
+    onTunnelStartErrorRef.current = onTunnelStartError;
+  }, [onTunnelStartSuccess, onTunnelStartError]);
 
   const handleDuplicateTunnelError = useCallback(
     async (tunnelId: number, tunnelName: string) => {
@@ -99,7 +108,7 @@ export function useTunnelProgress(
             await frpcManager.stopTunnel(tunnelId);
             await new Promise((resolve) => setTimeout(resolve, 500));
           } catch {
-            // 忽略停止错误
+            // 忽略错误
           }
 
           await frpcManager.startTunnel(tunnelId, user.usertoken);
@@ -170,8 +179,7 @@ export function useTunnelProgress(
           }, 20000);
         }
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "自动修复失败";
+        const message = err instanceof Error ? err.message : "自动修复失败";
         toast.error(message, { duration: 5000 });
         const tunnelKey = `api_${tunnelId}`;
         setTunnelProgress((prev) => {
@@ -198,7 +206,6 @@ export function useTunnelProgress(
     [tunnels, fixingTunnels, setRunningTunnels],
   );
 
-  // 初始化进度
   useEffect(() => {
     const initializeProgress = async () => {
       logStore.startListening();
@@ -242,7 +249,6 @@ export function useTunnelProgress(
     initializeProgress();
   }, []);
 
-  // 监听日志更新
   useEffect(() => {
     const unsubscribe = logStore.subscribe((logs: LogMessage[]) => {
       if (logs.length === 0) return;
@@ -258,8 +264,11 @@ export function useTunnelProgress(
           return prev;
         }
 
-        const newProgress =
-          current || { progress: 0, isError: false, isSuccess: false };
+        const newProgress = current || {
+          progress: 0,
+          isError: false,
+          isSuccess: false,
+        };
 
         if (message.includes("frpc 进程已启动")) {
           newProgress.startTime = Date.now();
@@ -277,6 +286,7 @@ export function useTunnelProgress(
                   isError: true,
                 };
                 tunnelProgressCache.set(tunnelId, errorProgress);
+                onTunnelStartErrorRef.current?.(tunnelKey);
                 return new Map(prev).set(tunnelKey, errorProgress);
               }
               return prev;
@@ -302,6 +312,7 @@ export function useTunnelProgress(
           if (successTimeoutRefs.current.has(tunnelKey)) {
             clearTimeout(successTimeoutRefs.current.get(tunnelKey)!);
           }
+          onTunnelStartSuccessRef.current?.(tunnelKey);
           const successTimeout = setTimeout(() => {
             setTunnelProgress((prev) => {
               const current = prev.get(tunnelKey);
@@ -347,9 +358,12 @@ export function useTunnelProgress(
 
             if (tunnelName && tunnelName.trim() !== "") {
               processedErrorsRef.current.add(errorKey);
-              setTimeout(() => {
-                processedErrorsRef.current.delete(errorKey);
-              }, 5 * 60 * 1000);
+              setTimeout(
+                () => {
+                  processedErrorsRef.current.delete(errorKey);
+                },
+                5 * 60 * 1000,
+              );
 
               handleDuplicateTunnelError(tunnelId, tunnelName.trim());
             } else {
@@ -374,7 +388,6 @@ export function useTunnelProgress(
     };
   }, [fixingTunnels, handleDuplicateTunnelError, tunnels]);
 
-  // 清理定时器
   useEffect(() => {
     const timeouts = timeoutRefs.current;
     const successTimeouts = successTimeoutRefs.current;
@@ -386,7 +399,6 @@ export function useTunnelProgress(
     };
   }, []);
 
-  // 监听运行状态变化，更新进度
   useEffect(() => {
     if (tunnels.length === 0) return;
 
@@ -406,6 +418,7 @@ export function useTunnelProgress(
                   isSuccess: false,
                 };
                 tunnelProgressCache.set(tunnel.id, errorProgress);
+                onTunnelStartErrorRef.current?.(tunnelKey);
                 return new Map(prev).set(tunnelKey, errorProgress);
               }
               return prev;
@@ -445,4 +458,3 @@ export function useTunnelProgress(
     successTimeoutRefs,
   };
 }
-

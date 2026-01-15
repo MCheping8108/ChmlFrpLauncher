@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { Palette } from "lucide-react";
 import {
   Item,
@@ -6,7 +7,12 @@ import {
   ItemDescription,
   ItemActions,
 } from "@/components/ui/item";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import type { ThemeMode } from "../types";
+import type { EffectType } from "../utils";
+import { getBackgroundType } from "../utils";
+import type { MutableRefObject } from "react";
 
 interface AppearanceSectionProps {
   isMacOS: boolean;
@@ -14,6 +20,7 @@ interface AppearanceSectionProps {
   setFollowSystem: (value: boolean) => void;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
+  isViewTransitionRef: MutableRefObject<boolean>;
   showTitleBar: boolean;
   setShowTitleBar: (value: boolean) => void;
   backgroundImage: string | null;
@@ -22,8 +29,12 @@ interface AppearanceSectionProps {
   setOverlayOpacity: (value: number) => void;
   blur: number;
   setBlur: (value: number) => void;
-  frostedGlassEnabled: boolean;
-  setFrostedGlassEnabled: (value: boolean) => void;
+  effectType: EffectType;
+  setEffectType: (value: EffectType) => void;
+  videoStartSound: boolean;
+  setVideoStartSound: (value: boolean) => void;
+  videoVolume: number;
+  setVideoVolume: (value: number) => void;
   onSelectBackgroundImage: () => void;
   onClearBackgroundImage: () => void;
 }
@@ -34,6 +45,7 @@ export function AppearanceSection({
   setFollowSystem,
   theme,
   setTheme,
+  isViewTransitionRef,
   showTitleBar,
   setShowTitleBar,
   backgroundImage,
@@ -42,11 +54,67 @@ export function AppearanceSection({
   setOverlayOpacity,
   blur,
   setBlur,
-  frostedGlassEnabled,
-  setFrostedGlassEnabled,
+  effectType,
+  setEffectType,
+  videoStartSound,
+  setVideoStartSound,
+  videoVolume,
+  setVideoVolume,
   onSelectBackgroundImage,
   onClearBackgroundImage,
 }: AppearanceSectionProps) {
+  const backgroundType = getBackgroundType(backgroundImage);
+  const isVideo = backgroundType === "video";
+
+  const toggleTheme = async (newTheme: ThemeMode, event?: React.MouseEvent) => {
+    if (!document.startViewTransition) {
+      setTheme(newTheme);
+      return;
+    }
+
+    const x = event?.clientX ?? window.innerWidth / 2;
+    const y = event?.clientY ?? window.innerHeight / 2;
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y),
+    );
+
+    isViewTransitionRef.current = true;
+    const transition = document.startViewTransition(() => {
+      flushSync(() => {
+        setTheme(newTheme);
+      });
+      const root = document.documentElement;
+      if (newTheme === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    });
+
+    await transition.ready;
+
+    const clipPath = [
+      `circle(0px at ${x}px ${y}px)`,
+      `circle(${endRadius}px at ${x}px ${y}px)`,
+    ];
+
+    const animation = document.documentElement.animate(
+      {
+        clipPath: clipPath,
+      },
+      {
+        duration: 500,
+        easing: "ease-in",
+        pseudoElement: "::view-transition-new(root)",
+      },
+    );
+    
+    animation.addEventListener("finish", () => {
+      isViewTransitionRef.current = false;
+    });
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -90,32 +158,26 @@ export function AppearanceSection({
             <ItemContent>
               <ItemTitle>主题</ItemTitle>
               <ItemDescription className="text-xs">
-                选择界面配色方案
+                {theme === "dark" ? "深色模式" : "浅色模式"}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTheme("light")}
-                  className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                    theme === "light"
-                      ? "bg-foreground text-background"
-                      : "border border-border/60 hover:bg-muted/40"
+              <button
+                onClick={(e) =>
+                  toggleTheme(theme === "dark" ? "light" : "dark", e)
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  theme === "dark" ? "bg-foreground" : "bg-muted"
+                } cursor-pointer`}
+                role="switch"
+                aria-checked={theme === "dark"}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                    theme === "dark" ? "translate-x-6" : "translate-x-1"
                   }`}
-                >
-                  浅色
-                </button>
-                <button
-                  onClick={() => setTheme("dark")}
-                  className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                    theme === "dark"
-                      ? "bg-foreground text-background"
-                      : "border border-border/60 hover:bg-muted/40"
-                  }`}
-                >
-                  深色
-                </button>
-              </div>
+                />
+              </button>
             </ItemActions>
           </Item>
         )}
@@ -163,24 +225,28 @@ export function AppearanceSection({
           </ItemContent>
           <ItemActions>
             <div className="flex gap-2">
-              <button
-                onClick={onSelectBackgroundImage}
-                disabled={isSelectingImage}
-                className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                  isSelectingImage
-                    ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "bg-foreground text-background hover:opacity-90"
-                }`}
-              >
-                {isSelectingImage ? "选择中..." : "选择文件"}
-              </button>
+              {!backgroundImage && (
+                <Button
+                  onClick={onSelectBackgroundImage}
+                  disabled={isSelectingImage}
+                  size="sm"
+                  className={`h-auto px-3 py-1.5 text-xs ${
+                    isSelectingImage
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-foreground text-background hover:opacity-90"
+                  }`}
+                >
+                  {isSelectingImage ? "选择中..." : "选择文件"}
+                </Button>
+              )}
               {backgroundImage && (
-                <button
+                <Button
                   onClick={onClearBackgroundImage}
-                  className="px-3 py-1.5 text-xs rounded transition-colors border border-border/60 hover:bg-muted/40"
+                  size="sm"
+                  className="h-auto px-3 py-1.5 text-xs"
                 >
                   清除
-                </button>
+                </Button>
               )}
             </div>
           </ItemActions>
@@ -193,31 +259,29 @@ export function AppearanceSection({
               className="border-0 border-t border-border/60"
             >
               <ItemContent>
-                <ItemTitle>毛玻璃效果</ItemTitle>
+                <ItemTitle>视觉效果</ItemTitle>
                 <ItemDescription className="text-xs">
-                  为所有元素应用毛玻璃透明效果
+                  选择背景视觉效果类型
                 </ItemDescription>
               </ItemContent>
               <ItemActions>
-                <button
-                  onClick={() => {
-                    const newValue = !frostedGlassEnabled;
-                    setFrostedGlassEnabled(newValue);
-                    localStorage.setItem("frostedGlassEnabled", newValue.toString());
-                    window.dispatchEvent(new Event("frostedGlassChanged"));
+                <Select
+                  options={[
+                    { value: "none", label: "无" },
+                    { value: "frosted", label: "毛玻璃" },
+                    { value: "translucent", label: "半透明" },
+                  ]}
+                  value={effectType}
+                  onChange={(value) => {
+                    const newEffectType = value as EffectType;
+                    setEffectType(newEffectType);
+                    localStorage.setItem("effectType", newEffectType);
+                    window.dispatchEvent(new Event("effectTypeChanged"));
                   }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    frostedGlassEnabled ? "bg-foreground" : "bg-muted"
-                  } cursor-pointer`}
-                  role="switch"
-                  aria-checked={frostedGlassEnabled}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                      frostedGlassEnabled ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
-                </button>
+                  placeholder="选择视觉效果"
+                  size="sm"
+                  className="w-28"
+                />
               </ItemActions>
             </Item>
 
@@ -281,8 +345,84 @@ export function AppearanceSection({
             </Item>
           </>
         )}
+
+        {isVideo && (
+          <>
+            <Item
+              variant="outline"
+              className="border-0 border-t border-border/60"
+            >
+              <ItemContent>
+                <ItemTitle>启动声音</ItemTitle>
+                <ItemDescription className="text-xs">
+                  在应用启动时播放视频声音（仅第一次循环）
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => {
+                    const newValue = !videoStartSound;
+                    setVideoStartSound(newValue);
+                    localStorage.setItem(
+                      "videoStartSound",
+                      newValue.toString(),
+                    );
+                    window.dispatchEvent(new Event("videoStartSoundChanged"));
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    videoStartSound ? "bg-foreground" : "bg-muted"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={videoStartSound}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      videoStartSound ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+
+            {videoStartSound && (
+              <Item variant="outline" className="border-0">
+                <ItemContent>
+                  <ItemTitle>音量</ItemTitle>
+                  <ItemDescription className="text-xs">
+                    调整视频声音的音量 ({videoVolume}%)
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <div className="flex items-center gap-3 w-48">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={videoVolume}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value, 10);
+                        setVideoVolume(newValue);
+                        localStorage.setItem(
+                          "videoVolume",
+                          newValue.toString(),
+                        );
+                        window.dispatchEvent(new Event("videoVolumeChanged"));
+                      }}
+                      className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                      style={{
+                        background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${videoVolume}%, var(--muted) ${videoVolume}%, var(--muted) 100%)`,
+                      }}
+                    />
+                    <span className="text-xs text-muted-foreground w-10 text-right">
+                      {videoVolume}%
+                    </span>
+                  </div>
+                </ItemActions>
+              </Item>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
 }
-

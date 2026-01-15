@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ChmlFrpLauncher",
-  "version": "0.2.1",
+  "version": "0.3.4",
   "identifier": "net.chmlfrp.launcher",
   "build": {
     "frontendDist": "../dist",
@@ -35,13 +35,7 @@
     "security": {
       "csp": null
     },
-    "trayIcon": {
-      "id": "main",
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true,
-      "menuOnLeftClick": false,
-      "title": "ChmlFrp Launcher"
-    }
+    "withGlobalTauri": true
   },
   "bundle": {
     "createUpdaterArtifacts": true,
@@ -67,6 +61,11 @@
         "https://cf-v2.uapis.cn/launcher/update",
         "https://github.com/TechCat-Team/ChmlFrpLauncher/releases/latest/download/latest.json"
       ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["chmlfrp"]
+      }
     }
   }
 }

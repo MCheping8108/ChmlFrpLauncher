@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
 import { getStoredUser } from "@/services/api";
@@ -7,9 +7,7 @@ import { customTunnelService } from "@/services/customTunnelService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 
 interface UseTunnelToggleProps {
-  setTunnelProgress: Dispatch<
-    SetStateAction<Map<string, TunnelProgress>>
-  >;
+  setTunnelProgress: Dispatch<SetStateAction<Map<string, TunnelProgress>>>;
   setRunningTunnels: Dispatch<SetStateAction<Set<string>>>;
   timeoutRefs: React.MutableRefObject<
     Map<string, ReturnType<typeof setTimeout>>
@@ -28,15 +26,16 @@ export function useTunnelToggle({
   const [togglingTunnels, setTogglingTunnels] = useState<Set<string>>(
     new Set(),
   );
+  const startingTunnelKeyRef = useRef<string | null>(null);
 
   const handleToggle = async (tunnel: UnifiedTunnel, enabled: boolean) => {
-    const tunnelKey = tunnel.type === "api" 
-      ? `api_${tunnel.data.id}` 
-      : `custom_${tunnel.data.id}`;
-    
-    const tunnelName = tunnel.type === "api" 
-      ? tunnel.data.name 
-      : tunnel.data.name;
+    const tunnelKey =
+      tunnel.type === "api"
+        ? `api_${tunnel.data.id}`
+        : `custom_${tunnel.data.id}`;
+
+    const tunnelName =
+      tunnel.type === "api" ? tunnel.data.name : tunnel.data.name;
 
     if (tunnel.type === "api") {
       const user = getStoredUser();
@@ -50,10 +49,18 @@ export function useTunnelToggle({
       return;
     }
 
+    if (enabled && startingTunnelKeyRef.current !== null && startingTunnelKeyRef.current !== tunnelKey) {
+      toast.info("请等待当前隧道启动完成后再启动其他隧道", {
+        duration: 3000,
+      });
+      return;
+    }
+
     setTogglingTunnels((prev) => new Set(prev).add(tunnelKey));
 
     try {
       if (enabled) {
+        startingTunnelKeyRef.current = tunnelKey;
         setTunnelProgress((prev) => {
           const next = new Map(prev);
           const resetProgress = {
@@ -74,6 +81,9 @@ export function useTunnelToggle({
           );
         } else {
           message = await customTunnelService.startCustomTunnel(tunnel.data.id);
+          if (startingTunnelKeyRef.current === tunnelKey) {
+            startingTunnelKeyRef.current = null;
+          }
         }
 
         toast.success(message || `隧道 ${tunnelName} 已启动`);
@@ -115,6 +125,9 @@ export function useTunnelToggle({
         err instanceof Error ? err.message : `${enabled ? "启动" : "停止"}失败`;
       toast.error(message);
       if (enabled) {
+        if (startingTunnelKeyRef.current === tunnelKey) {
+          startingTunnelKeyRef.current = null;
+        }
         const errorProgress = {
           progress: 100,
           isError: true,
@@ -135,9 +148,15 @@ export function useTunnelToggle({
     }
   };
 
+  const clearStartingTunnel = (tunnelKey: string) => {
+    if (startingTunnelKeyRef.current === tunnelKey) {
+      startingTunnelKeyRef.current = null;
+    }
+  };
+
   return {
     togglingTunnels,
     handleToggle,
+    clearStartingTunnel,
   };
 }
-

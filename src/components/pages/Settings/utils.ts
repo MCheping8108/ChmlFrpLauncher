@@ -46,9 +46,30 @@ export const getInitialBypassProxy = (): boolean => {
 export const getInitialShowTitleBar = (): boolean => {
   if (typeof window === "undefined") return false;
   const stored = localStorage.getItem("showTitleBar");
-  // 如果从未设置过，默认返回 false（关闭）
   if (stored === null) return false;
   return stored === "true";
+};
+
+export const getInitialTranslucentEnabled = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("translucentEnabled");
+  return stored === "true";
+};
+
+export type EffectType = "frosted" | "translucent" | "none";
+
+export const getInitialEffectType = (): EffectType => {
+  if (typeof window === "undefined") return "none";
+  const stored = localStorage.getItem("effectType");
+  if (stored === "frosted" || stored === "translucent" || stored === "none") {
+    return stored;
+  }
+  const frostedEnabled = localStorage.getItem("frostedGlassEnabled") === "true";
+  const translucentEnabled =
+    localStorage.getItem("translucentEnabled") === "true";
+  if (frostedEnabled) return "frosted";
+  if (translucentEnabled) return "translucent";
+  return "none";
 };
 
 export const getMimeType = (filePath: string): string => {
@@ -78,11 +99,28 @@ export const isVideoMimeType = (mimeType: string): boolean => {
   return mimeType.startsWith("video/");
 };
 
-export const getBackgroundType = (dataUrl: string | null): "image" | "video" | null => {
+export const getBackgroundType = (
+  dataUrl: string | null,
+): "image" | "video" | null => {
   if (!dataUrl) return null;
   if (dataUrl.startsWith("data:video/")) return "video";
   if (dataUrl.startsWith("data:image/")) return "image";
-  // 向后兼容：如果没有明确的类型，假设是图片
+  if (dataUrl.startsWith("app://") || dataUrl.startsWith("file://")) {
+    const ext = dataUrl.split(".").pop()?.toLowerCase();
+    const videoExts = ["mp4", "webm", "ogv", "mov"];
+    if (ext && videoExts.includes(ext)) return "video";
+  }
   return "image";
 };
 
+export const getInitialVideoStartSound = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("videoStartSound");
+  return stored === "true";
+};
+
+export const getInitialVideoVolume = (): number => {
+  if (typeof window === "undefined") return 50;
+  const stored = localStorage.getItem("videoVolume");
+  return stored ? parseInt(stored, 10) : 50;
+};
