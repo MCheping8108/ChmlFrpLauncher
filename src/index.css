@@ -116,6 +116,33 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* 禁用文本选择 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  /* 允许输入元素选择文本 */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+  /* 允许带有 data-allow-copy 属性的元素选择文本 */
+  [data-allow-copy="true"],
+  [data-allow-copy="true"] * {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
   }
   html,
   body {
