@@ -9,7 +9,7 @@ import { deleteTunnel } from "@/services/api";
 import { customTunnelService } from "@/services/customTunnelService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 import { toast } from "sonner";
-import { Monitor, Globe, Link as LinkIcon, Server } from "lucide-react";
+import { Monitor, Globe } from "lucide-react";
 
 interface TunnelCardProps {
   tunnel: UnifiedTunnel;
@@ -113,7 +113,6 @@ export function TunnelCard({
                       : tunnel.data.type}
                   </span>
                   <span className="text-xs text-muted-foreground truncate flex items-center gap-1 opacity-80">
-                    <Server className="w-3 h-3" />
                     {isApi ? tunnel.data.node : tunnel.data.server_addr || "-"}
                   </span>
                 </div>
@@ -140,7 +139,6 @@ export function TunnelCard({
                 <>
                   <div className="flex items-center justify-between text-xs group/item">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Monitor className="w-3.5 h-3.5 opacity-70" />
                       <span>本地</span>
                     </div>
                     <span className="font-mono text-foreground/80 selection:bg-foreground/10">
@@ -152,7 +150,6 @@ export function TunnelCard({
                     onClick={handleCopyLink}
                   >
                     <div className="flex items-center gap-2 text-muted-foreground group-hover/link:text-foreground transition-colors">
-                      <LinkIcon className="w-3.5 h-3.5 opacity-70" />
                       <span>链接</span>
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0">
