@@ -165,11 +165,9 @@
   #root {
     height: 100vh;
     width: 100vw;
-    border-radius: 18px;
+    border-radius: 0;
     overflow: hidden;
     -webkit-app-region: no-drag;
-    clip-path: inset(0 round 18px);
-    -webkit-clip-path: inset(0 round 18px);
     background-color: var(--background);
   }
   /* 隐藏 macOS 系统标题栏文本 */

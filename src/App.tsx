@@ -155,7 +155,7 @@ function App() {
         }`}
         style={{
           ...backgroundStyle(),
-          borderRadius: "18px",
+          borderRadius: "0",
           overflow: "hidden",
           position: "relative",
         }}
