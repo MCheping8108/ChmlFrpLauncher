@@ -1,5 +1,7 @@
 import type { ThemeMode, SidebarMode } from "./types";
 
+export type { ThemeMode, SidebarMode };
+
 export const getInitialFollowSystem = (): boolean => {
   if (typeof window === "undefined") return true;
   const stored = localStorage.getItem("themeFollowSystem");

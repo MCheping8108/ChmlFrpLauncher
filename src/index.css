@@ -499,14 +499,20 @@
   .frosted-glass-enabled .bg-card,
   .frosted-glass-enabled [data-slot="popover"],
   .frosted-glass-enabled .bg-popover,
+  .frosted-glass-enabled [data-slot="context-menu-content"],
+  .frosted-glass-enabled [data-slot="context-menu-sub-content"],
+  .frosted-glass-enabled [data-slot="dialog-content"],
   .frosted-glass-enabled .bg-sidebar,
   .frosted-glass-enabled .bg-background,
   .frosted-glass-enabled input,
   .frosted-glass-enabled textarea,
-  .frosted-glass-enabled select {
-    background: rgba(255, 255, 255, 0.6) !important;
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  .frosted-glass-enabled select,
+  body:has(.frosted-glass-enabled) [data-slot="context-menu-content"],
+  body:has(.frosted-glass-enabled) [data-slot="context-menu-sub-content"],
+  body:has(.frosted-glass-enabled) [data-slot="dialog-content"] {
+    background-color: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
     border-color: rgba(255, 255, 255, 0.4) !important;
   }
 
@@ -516,25 +522,29 @@
   .dark .frosted-glass-enabled .bg-card,
   .dark .frosted-glass-enabled [data-slot="popover"],
   .dark .frosted-glass-enabled .bg-popover,
+  .dark .frosted-glass-enabled [data-slot="context-menu-content"],
+  .dark .frosted-glass-enabled [data-slot="context-menu-sub-content"],
+  .dark .frosted-glass-enabled [data-slot="dialog-content"],
   .dark .frosted-glass-enabled .bg-sidebar,
   .dark .frosted-glass-enabled .bg-background,
   .dark .frosted-glass-enabled input,
   .dark .frosted-glass-enabled textarea,
-  .dark .frosted-glass-enabled select {
-    background: rgba(15, 16, 20, 0.6) !important;
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  .dark .frosted-glass-enabled select,
+  body.dark:has(.frosted-glass-enabled) [data-slot="context-menu-content"],
+  body.dark:has(.frosted-glass-enabled) [data-slot="context-menu-sub-content"],
+  body.dark:has(.frosted-glass-enabled) [data-slot="dialog-content"] {
+    background-color: rgba(15, 16, 20, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
     border-color: rgba(255, 255, 255, 0.15) !important;
   }
 
-  /* Item 在毛玻璃模式下保持透明 */
   .frosted-glass-enabled [data-slot="item"] {
     background: transparent !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
 
-  /* Item 边框在毛玻璃模式下的优化 */
   .frosted-glass-enabled [data-slot="item"][data-variant="outline"] {
     border-color: rgba(255, 255, 255, 0.15) !important;
   }
@@ -581,8 +591,11 @@
   .translucent-enabled .bg-background,
   .translucent-enabled input,
   .translucent-enabled textarea,
-  .translucent-enabled select {
-    background: rgba(255, 255, 255, 0.5) !important;
+  .translucent-enabled select,
+  body:has(.translucent-enabled) [data-slot="context-menu-content"],
+  body:has(.translucent-enabled) [data-slot="context-menu-sub-content"],
+  body:has(.translucent-enabled) [data-slot="dialog-content"] {
+    background-color: rgba(255, 255, 255, 0.5) !important;
     border-color: rgba(255, 255, 255, 0.3) !important;
   }
 
@@ -596,17 +609,18 @@
   .dark .translucent-enabled .bg-background,
   .dark .translucent-enabled input,
   .dark .translucent-enabled textarea,
-  .dark .translucent-enabled select {
-    background: rgba(15, 16, 20, 0.5) !important;
+  .dark .translucent-enabled select,
+  body.dark:has(.translucent-enabled) [data-slot="context-menu-content"],
+  body.dark:has(.translucent-enabled) [data-slot="context-menu-sub-content"],
+  body.dark:has(.translucent-enabled) [data-slot="dialog-content"] {
+    background-color: rgba(15, 16, 20, 0.5) !important;
     border-color: rgba(255, 255, 255, 0.2) !important;
   }
 
-  /* Item 在半透明模式下保持透明 */
   .translucent-enabled [data-slot="item"] {
     background: transparent !important;
   }
 
-  /* Item 边框在半透明模式下的优化 */
   .translucent-enabled [data-slot="item"][data-variant="outline"] {
     border-color: rgba(255, 255, 255, 0.2) !important;
   }
