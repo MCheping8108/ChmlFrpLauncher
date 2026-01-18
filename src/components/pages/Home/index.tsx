@@ -7,6 +7,7 @@ import { UserInfoCard } from "./components/UserInfoCard";
 import { FlowDataCard } from "./components/FlowDataCard";
 import { FAQSection } from "./components/FAQSection";
 import { FeedbackCard } from "./components/FeedbackCard";
+import { CommunityGroups } from "./components/CommunityGroups";
 import type { HomeProps } from "./types";
 
 export function Home({ user, onUserChange }: HomeProps) {
@@ -57,7 +58,7 @@ export function Home({ user, onUserChange }: HomeProps) {
         animatedCountOfRecords={animatedCountOfRecords}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
         <UserInfoCard userInfo={userInfo} />
         <FAQSection />
         <FlowDataCard
@@ -67,6 +68,8 @@ export function Home({ user, onUserChange }: HomeProps) {
         />
         <FeedbackCard />
       </div>
+
+      <CommunityGroups />
     </div>
   );
 }
