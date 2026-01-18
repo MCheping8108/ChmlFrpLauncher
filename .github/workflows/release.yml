@@ -14,39 +14,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - platform: macos-latest
           - platform: windows-latest
-          - platform: macos-14
           - platform: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-          run_install: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Get pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
+          cache: pnpm
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -70,11 +57,8 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.6
-        with:
-          cache-size: 3G
 
       - name: Enable sccache
-        shell: bash
         run: |
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
           echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> $GITHUB_ENV
@@ -86,13 +70,6 @@ jobs:
           key: ${{ runner.os }}-sccache-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-sccache-
-
-      - name: Windows linker & build optimization
-        if: matrix.platform == 'windows-latest'
-        shell: bash
-        run: |
-          echo "RUSTFLAGS=-C linker=lld-link -C link-arg=/DEBUG:NONE -C link-arg=/OPT:REF -C link-arg=/OPT:ICF" >> $GITHUB_ENV
-          echo "TAURI_BUNDLE_SKIP_WEBVIEW2_DOWNLOAD=true" >> $GITHUB_ENV
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-latest'
@@ -109,22 +86,37 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
+      - name: Windows linker optimization
+        if: matrix.platform == 'windows-latest'
+        run: |
+          echo "RUSTFLAGS=-C linker=lld-link -C link-arg=/OPT:REF -C link-arg=/OPT:ICF" >> $GITHUB_ENV
+          echo "TAURI_BUNDLE_SKIP_WEBVIEW2_DOWNLOAD=true" >> $GITHUB_ENV
+
       - name: Extract changelog
         id: changelog
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME}"
-          awk "
-            /^## ${VERSION}$/ {flag=1; next}
-            /^## v/ && flag {exit}
-            flag {print}
-          " CHANGELOG.md > RELEASE_NOTES.md
+
+          if [ ! -f CHANGELOG.md ]; then
+            echo "- 本版本未提供更新日志。" > RELEASE_NOTES.md
+          else
+            awk "
+              /^## ${VERSION}$/ {flag=1; next}
+              /^## v/ && flag {exit}
+              flag {print}
+            " CHANGELOG.md > RELEASE_NOTES.md
+          fi
+
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "- 本版本未提供详细更新说明。" > RELEASE_NOTES.md
+          fi
 
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Tauri build (no bundle)
+      - name: Build & Release with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -133,8 +125,7 @@ jobs:
           RUSTC_WRAPPER: sccache
         with:
           packageManager: pnpm
-          args: "--no-bundle"
-          includeRelease: true
+          includeRelease: ${{ matrix.platform == 'macos-latest' }}
           tagName: ${{ github.ref_name }}
           releaseName: "ChmlFrpLauncher ${{ github.ref_name }}"
           releaseBody: |
@@ -143,6 +134,3 @@ jobs:
             ${{ steps.changelog.outputs.changelog }}
           releaseDraft: false
           prerelease: false
-
-      - name: Bundle app
-        run: pnpm tauri build
