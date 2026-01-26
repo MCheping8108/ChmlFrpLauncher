@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Home as HomeIcon,
   List,
@@ -11,7 +10,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   clearStoredUser,
   login,
@@ -233,108 +232,108 @@ export function Sidebar({
         }
       }}
     >
-      <DialogPortal>
-        <DialogOverlay className="z-[9999] backdrop-blur-sm" />
-        <DialogPrimitive.Content className="fixed top-[50%] left-[50%] z-[10000] w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
-                <LogIn className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-foreground">登录账号</h2>
-                <p className="text-xs text-muted-foreground">
-                  登录以访问所有功能
-                </p>
-              </div>
+      <DialogContent
+        showCloseButton={false}
+        className="z-[10000] w-full max-w-md rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
+              <LogIn className="w-5 h-5 text-primary-foreground" />
             </div>
-            <button
-              type="button"
-              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all duration-200 flex items-center justify-center"
-              onClick={() => setLoginOpen(false)}
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">登录账号</h2>
+              <p className="text-xs text-muted-foreground">
+                登录以访问所有功能
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all duration-200 flex items-center justify-center"
+            onClick={() => setLoginOpen(false)}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleLogin}>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-foreground/80 tracking-wide">
+              账户名
+            </label>
+            <input
+              className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
+              placeholder="请输入账户名"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-foreground/80 tracking-wide">
+              密码
+            </label>
+            <input
+              type="password"
+              className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
+              placeholder="请输入密码"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
 
-          <form className="space-y-4" onSubmit={handleLogin}>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-foreground/80 tracking-wide">
-                账户名
-              </label>
-              <input
-                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
-                placeholder="请输入账户名"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-foreground/80 tracking-wide">
-                密码
-              </label>
-              <input
-                type="password"
-                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
-                placeholder="请输入密码"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="rememberMe"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-border/50 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer accent-primary"
+            />
+            <label
+              htmlFor="rememberMe"
+              className="text-xs text-foreground/80 cursor-pointer select-none"
+            >
+              保存登录（重启后无需重新登录）
+            </label>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="rememberMe"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-border/50 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer accent-primary"
-              />
-              <label
-                htmlFor="rememberMe"
-                className="text-xs text-foreground/80 cursor-pointer select-none"
-              >
-                保存登录（重启后无需重新登录）
-              </label>
+          {error && (
+            <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <p className="text-xs text-destructive font-medium">{error}</p>
             </div>
+          )}
 
-            {error && (
-              <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                <p className="text-xs text-destructive font-medium">{error}</p>
-              </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-primary text-primary-foreground py-3 text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98] mt-6"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                登录中...
+              </span>
+            ) : (
+              "立即登录"
             )}
+          </button>
+        </form>
 
+        <div className="mt-6 pt-4 border-t border-border/30">
+          <p className="text-xs text-center text-muted-foreground">
+            还没有账号？{" "}
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-primary text-primary-foreground py-3 text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98] mt-6"
+              onClick={() => openUrl("https://www.chmlfrp.net")}
+              className="text-primary font-medium hover:underline"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  登录中...
-                </span>
-              ) : (
-                "立即登录"
-              )}
+              立即注册
             </button>
-          </form>
-
-          <div className="mt-6 pt-4 border-t border-border/30">
-            <p className="text-xs text-center text-muted-foreground">
-              还没有账号？{" "}
-              <button
-                onClick={() => openUrl("https://www.chmlfrp.net")}
-                className="text-primary font-medium hover:underline"
-              >
-                立即注册
-              </button>
-            </p>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPortal>
+          </p>
+        </div>
+      </DialogContent>
     </Dialog>
   );
 
