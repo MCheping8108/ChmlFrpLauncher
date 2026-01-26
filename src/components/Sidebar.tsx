@@ -215,6 +215,13 @@ export function Sidebar({
     };
   }, []);
 
+  // 悬浮菜单收起时自动关闭用户菜单
+  useEffect(() => {
+    if (mode === "floating" && collapsed && userMenuOpen) {
+      setUserMenuOpen(false);
+    }
+  }, [collapsed, mode, userMenuOpen]);
+
   // Shared Dialog Component
   const LoginDialog = (
     <Dialog
@@ -416,7 +423,7 @@ export function Sidebar({
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-border/30" ref={userMenuRef}>
+        <div className="p-4 border-t border-border/30 relative" ref={userMenuRef}>
           <button
             className="w-full p-2 text-left hover:bg-muted/50 transition-all duration-200 flex items-center gap-3 rounded-xl group relative"
             onClick={() => {
@@ -630,7 +637,7 @@ export function Sidebar({
           </nav>
 
           <div
-            className="relative border-t border-sidebar-border/30 overflow-hidden"
+            className="relative border-t border-sidebar-border/30"
             style={{
               padding: collapsed ? "12px 0" : "16px", // p-4 = 16px
               transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
