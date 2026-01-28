@@ -17,10 +17,10 @@ pub struct CustomTunnel {
     pub config_file: String,
     pub server_addr: Option<String>,
     pub server_port: Option<u16>,
-    pub tunnels: Vec<String>,        // 配置文件中的隧道名列表
-    pub tunnel_type: Option<String>, // 隧道类型（tcp/udp/http/https）
-    pub custom_domains: Option<String>, // HTTP/HTTPS: custom_domains
-    pub subdomain: Option<String>,      // HTTP/HTTPS: subdomain
+    pub tunnels: Vec<String>,
+    pub tunnel_type: Option<String>,
+    pub custom_domains: Option<String>,
+    pub subdomain: Option<String>,
     pub local_ip: Option<String>,
     pub local_port: Option<u16>,
     pub remote_port: Option<u16>,
@@ -33,22 +33,11 @@ pub async fn save_custom_tunnel(
     app_handle: tauri::AppHandle,
     _tunnel_name: String,
     config_content: String,
-) -> Result<CustomTunnel, String> {
-    // 解析配置文件获取隧道名
-    let parsed_info = parse_ini_config(&config_content)?;
+) -> Result<Vec<CustomTunnel>, String> {
+    let split = split_ini_config(&config_content)?;
 
-    if parsed_info.tunnel_names.is_empty() {
+    if split.tunnels.is_empty() {
         return Err("配置文件中未找到隧道名称".to_string());
-    }
-
-    let tunnel_name = parsed_info.tunnel_names[0].clone();
-
-    // 验证隧道名称只包含安全字符
-    if !tunnel_name
-        .chars()
-        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
-    {
-        return Err("配置文件中的隧道名称只能包含字母、数字、下划线和连字符".to_string());
     }
 
     let app_dir = app_handle
@@ -56,39 +45,56 @@ pub async fn save_custom_tunnel(
         .app_data_dir()
         .map_err(|e| format!("获取应用目录失败: {}", e))?;
 
-    // 确保目录存在
     fs::create_dir_all(&app_dir).map_err(|e| format!("创建目录失败: {}", e))?;
 
-    // 保存配置文件
-    let config_file_name = format!("{}.ini", tunnel_name);
-    let config_file_path = app_dir.join(&config_file_name);
+    let mut created = Vec::with_capacity(split.tunnels.len());
 
-    eprintln!("[自定义隧道] 配置文件路径: {:?}", config_file_path);
+    for (tunnel_name, tunnel_block) in split.tunnels {
+        if !tunnel_name
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+        {
+            return Err("配置文件中的隧道名称只能包含字母、数字、下划线和连字符".to_string());
+        }
 
-    fs::write(&config_file_path, &config_content)
-        .map_err(|e| format!("写入配置文件失败: {}", e))?;
+        let single_ini = if split.common.trim().is_empty() {
+            tunnel_block
+        } else {
+            format!("{}\n\n{}", split.common, tunnel_block)
+        };
 
-    // 创建自定义隧道信息
-    let custom_tunnel = CustomTunnel {
-        id: tunnel_name.clone(),
-        name: tunnel_name.clone(),
-        config_file: config_file_name,
-        server_addr: parsed_info.server_addr,
-        server_port: parsed_info.server_port,
-        tunnels: parsed_info.tunnel_names,
-        tunnel_type: parsed_info.tunnel_type,
-        custom_domains: parsed_info.custom_domains,
-        subdomain: parsed_info.subdomain,
-        local_ip: parsed_info.local_ip,
-        local_port: parsed_info.local_port,
-        remote_port: parsed_info.remote_port,
-        created_at: chrono::Local::now().to_rfc3339(),
-    };
+        let parsed_info = parse_ini_config(&single_ini)?;
 
-    // 保存自定义隧道列表
-    save_custom_tunnel_list(&app_handle, &custom_tunnel)?;
+        let config_file_name = format!("{}.ini", tunnel_name);
+        let config_file_path = app_dir.join(&config_file_name);
 
-    Ok(custom_tunnel)
+        eprintln!("[自定义隧道] 配置文件路径: {:?}", config_file_path);
+
+        fs::write(&config_file_path, &single_ini)
+            .map_err(|e| format!("写入配置文件失败: {}", e))?;
+
+        let custom_tunnel = CustomTunnel {
+            id: tunnel_name.clone(),
+            name: tunnel_name.clone(),
+            config_file: config_file_name,
+            server_addr: parsed_info.server_addr,
+            server_port: parsed_info.server_port,
+            tunnels: parsed_info.tunnel_names,
+            tunnel_type: parsed_info.tunnel_type,
+            custom_domains: parsed_info.custom_domains,
+            subdomain: parsed_info.subdomain,
+            local_ip: parsed_info.local_ip,
+            local_port: parsed_info.local_port,
+            remote_port: parsed_info.remote_port,
+            created_at: chrono::Local::now().to_rfc3339(),
+        };
+
+        save_custom_tunnel_list(&app_handle, &custom_tunnel)?;
+
+        created.push(custom_tunnel);
+    }
+
+    Ok(created)
 }
 
 /// 获取所有自定义隧道列表
@@ -135,6 +141,53 @@ pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<Cust
     }
 
     Ok(updated)
+}
+
+struct IniSplitResult {
+    common: String,
+    tunnels: Vec<(String, String)>,
+}
+
+fn split_ini_config(content: &str) -> Result<IniSplitResult, String> {
+    let mut common_lines: Vec<String> = Vec::new();
+    let mut tunnels: Vec<(String, Vec<String>)> = Vec::new();
+
+    let mut current_section: Option<String> = None;
+
+    for raw in content.lines() {
+        let trimmed = raw.trim();
+
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            let name = trimmed[1..trimmed.len() - 1].trim().to_string();
+            current_section = Some(name.clone());
+
+            if name == "common" {
+                common_lines.push(format!("[{}]", name));
+            } else if !name.is_empty() {
+                tunnels.push((name.clone(), vec![format!("[{}]", name)]));
+            }
+            continue;
+        }
+
+        match current_section.as_deref() {
+            Some("common") => common_lines.push(raw.to_string()),
+            Some(sec) if !sec.is_empty() && sec != "common" => {
+                if let Some((_, lines)) = tunnels.last_mut() {
+                    lines.push(raw.to_string());
+                }
+            }
+            _ => {
+            }
+        }
+    }
+
+    let common = common_lines.join("\n").trim().to_string();
+    let tunnels = tunnels
+        .into_iter()
+        .map(|(name, lines)| (name, lines.join("\n").trim().to_string()))
+        .collect::<Vec<_>>();
+
+    Ok(IniSplitResult { common, tunnels })
 }
 
 /// 删除自定义隧道
@@ -476,9 +529,6 @@ fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
             // 如果不是common段，则是隧道段
             if current_section != "common" && !current_section.is_empty() {
                 tunnel_count += 1;
-                if tunnel_count > 1 {
-                    return Err("配置文件只能包含一个隧道段".to_string());
-                }
                 tunnel_names.push(current_section.clone());
             }
             continue;
