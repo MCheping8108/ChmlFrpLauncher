@@ -10,6 +10,7 @@ import {
   EmptyContent,
 } from "@/components/ui/empty";
 import { Network } from "lucide-react";
+import { toast } from "sonner";
 import { useTunnelList } from "./hooks/useTunnelList";
 import { useTunnelProgress } from "./hooks/useTunnelProgress";
 import { useTunnelToggle } from "./hooks/useTunnelToggle";
@@ -18,13 +19,17 @@ import { TunnelCard } from "./components/TunnelCard";
 import { CreateTunnelDialog } from "./components/CreateTunnelDialog";
 import { EditTunnelDialog } from "./components/EditTunnelDialog";
 import { EditCustomTunnelDialog } from "./components/EditCustomTunnelDialog";
-import type { Tunnel } from "@/services/api";
+import { fetchNodes, type Tunnel, type Node } from "@/services/api";
 import type { CustomTunnel } from "@/services/customTunnelService";
 import type { UnifiedTunnel } from "./types";
 
 export function TunnelList() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [loadingCreateDialog, setLoadingCreateDialog] = useState(false);
+  const [preloadedNodes, setPreloadedNodes] = useState<Node[] | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [, setLoadingEditDialog] = useState(false);
+  const [preloadedEditNodes, setPreloadedEditNodes] = useState<Node[] | null>(null);
   const [editingTunnel, setEditingTunnel] = useState<Tunnel | null>(null);
   const [editCustomDialogOpen, setEditCustomDialogOpen] = useState(false);
   const [editingCustomTunnel, setEditingCustomTunnel] = useState<CustomTunnel | null>(null);
@@ -84,15 +89,45 @@ export function TunnelList() {
     onToggle: handleToggle,
   });
 
+  // 预加载节点数据并打开创建对话框
+  const handleOpenCreateDialog = useCallback(async () => {
+    try {
+      setLoadingCreateDialog(true);
+      const nodes = await fetchNodes();
+      setPreloadedNodes(nodes);
+      setCreateDialogOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "获取节点列表失败";
+      toast.error(message);
+    } finally {
+      setLoadingCreateDialog(false);
+    }
+  }, []);
+
+  // 预加载节点数据并打开编辑对话框
+  const handleOpenEditDialog = useCallback(async (tunnel: Tunnel) => {
+    try {
+      setLoadingEditDialog(true);
+      const nodes = await fetchNodes();
+      setPreloadedEditNodes(nodes);
+      setEditingTunnel(tunnel);
+      setEditDialogOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "获取节点列表失败";
+      toast.error(message);
+    } finally {
+      setLoadingEditDialog(false);
+    }
+  }, []);
+
   const handleEdit = useCallback((tunnel: UnifiedTunnel) => {
     if (tunnel.type === "api") {
-      setEditingTunnel(tunnel.data);
-      setEditDialogOpen(true);
+      handleOpenEditDialog(tunnel.data);
     } else if (tunnel.type === "custom") {
       setEditingCustomTunnel(tunnel.data);
       setEditCustomDialogOpen(true);
     }
-  }, []);
+  }, [handleOpenEditDialog]);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -107,10 +142,33 @@ export function TunnelList() {
         </div>
         <Button
           size="sm"
-          onClick={() => setCreateDialogOpen(true)}
+          onClick={handleOpenCreateDialog}
+          disabled={loadingCreateDialog}
           className="h-8 px-3 text-xs"
         >
-          新建隧道
+          {loadingCreateDialog ? (
+            <>
+              <svg className="animate-spin h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              加载中...
+            </>
+          ) : (
+            "新建隧道"
+          )}
         </Button>
       </div>
 
@@ -137,9 +195,32 @@ export function TunnelList() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCreateDialogOpen(true)}
+              onClick={handleOpenCreateDialog}
+              disabled={loadingCreateDialog}
             >
-              新建隧道
+              {loadingCreateDialog ? (
+                <>
+                  <svg className="animate-spin h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  加载中...
+                </>
+              ) : (
+                "新建隧道"
+              )}
             </Button>
           </EmptyContent>
         </Empty>
@@ -176,15 +257,27 @@ export function TunnelList() {
 
       <CreateTunnelDialog
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) {
+            setPreloadedNodes(null);
+          }
+        }}
         onSuccess={refreshTunnels}
+        preloadedNodes={preloadedNodes}
       />
 
       <EditTunnelDialog
         open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) {
+            setPreloadedEditNodes(null);
+          }
+        }}
         onSuccess={refreshTunnels}
         tunnel={editingTunnel}
+        preloadedNodes={preloadedEditNodes}
       />
 
       <EditCustomTunnelDialog

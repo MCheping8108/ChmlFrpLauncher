@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  fetchNodes,
   fetchNodeInfo,
   createTunnel,
   getStoredUser,
@@ -28,19 +27,20 @@ interface CreateTunnelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  preloadedNodes: Node[] | null;
 }
 
 export function CreateTunnelDialog({
   open,
   onOpenChange,
   onSuccess,
+  preloadedNodes,
 }: CreateTunnelDialogProps) {
   const [tunnelType, setTunnelType] = useState<"standard" | "custom">(
     "standard",
   );
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
-  const [nodes, setNodes] = useState<Node[]>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [nodeInfo, setNodeInfo] = useState<NodeInfo | null>(null);
   const [loadingNodeInfo, setLoadingNodeInfo] = useState(false);
@@ -61,23 +61,8 @@ export function CreateTunnelDialog({
     extraParams: "",
   });
 
-  // 加载节点列表
-  useEffect(() => {
-    if (open && step === 1) {
-      loadNodes();
-    }
-  }, [open, step]);
-
-  const loadNodes = async () => {
-    try {
-      const data = await fetchNodes();
-      setNodes(data);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "获取节点列表失败";
-      toast.error(message);
-    }
-  };
+  // 使用预加载的节点数据
+  const nodes = preloadedNodes || [];
 
   // 生成随机隧道名称
   const generateRandomTunnelName = () => {
@@ -294,12 +279,9 @@ export function CreateTunnelDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "max-h-[90vh] flex flex-col transition-all duration-300 ease-in-out",
+          "max-h-[90vh] flex flex-col",
           step === 1 ? "max-w-6xl" : step === 2 ? "max-w-4xl" : "max-w-xl",
         )}
-        style={{
-          transitionProperty: "width, height, max-width, max-height",
-        }}
       >
         <DialogHeader className="shrink-0 gap-1.5">
           <DialogTitle

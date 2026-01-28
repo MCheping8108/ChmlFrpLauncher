@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  fetchNodes,
   fetchNodeInfo,
   updateTunnel,
   getStoredUser,
@@ -28,6 +27,7 @@ interface EditTunnelDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   tunnel: Tunnel | null;
+  preloadedNodes: Node[] | null;
 }
 
 export function EditTunnelDialog({
@@ -35,10 +35,10 @@ export function EditTunnelDialog({
   onOpenChange,
   onSuccess,
   tunnel,
+  preloadedNodes,
 }: EditTunnelDialogProps) {
   const [step, setStep] = useState<1 | 2 | 3>(3); // 编辑隧道默认从步骤3开始
   const [loading, setLoading] = useState(false);
-  const [nodes, setNodes] = useState<Node[]>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [nodeInfo, setNodeInfo] = useState<NodeInfo | null>(null);
   const [loadingNodeInfo, setLoadingNodeInfo] = useState(false);
@@ -59,12 +59,8 @@ export function EditTunnelDialog({
     extraParams: "",
   });
 
-  // 加载节点列表
-  useEffect(() => {
-    if (open && step === 1) {
-      loadNodes();
-    }
-  }, [open, step]);
+  // 使用预加载的节点数据
+  const nodes = preloadedNodes || [];
 
   // 当隧道数据变化时，初始化表单
   useEffect(() => {
@@ -89,17 +85,6 @@ export function EditTunnelDialog({
       loadNodeInfoForStep3(tunnel.node);
     }
   }, [open, tunnel]);
-
-  const loadNodes = async () => {
-    try {
-      const data = await fetchNodes();
-      setNodes(data);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "获取节点列表失败";
-      toast.error(message);
-    }
-  };
 
   const loadNodeInfo = async (nodeName: string) => {
     try {
@@ -297,12 +282,9 @@ export function EditTunnelDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "max-h-[90vh] flex flex-col transition-all duration-300 ease-in-out",
+          "max-h-[90vh] flex flex-col",
           step === 1 ? "max-w-6xl" : step === 2 ? "max-w-4xl" : "max-w-xl",
         )}
-        style={{
-          transitionProperty: "width, height, max-width, max-height",
-        }}
       >
         <DialogHeader className="shrink-0 gap-1.5">
           <DialogTitle
