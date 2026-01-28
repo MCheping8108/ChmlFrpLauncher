@@ -141,12 +141,6 @@ export function Sidebar({
   ];
 
   const handleMenuClick = (itemId: string) => {
-    if (itemId === "tunnels" && !user) {
-      setLoginOpen(true);
-      setError("请先登录后访问隧道页面");
-      return;
-    }
-
     setError("");
     onTabChange(itemId);
   };
@@ -422,7 +416,10 @@ export function Sidebar({
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-border/30 relative" ref={userMenuRef}>
+        <div
+          className="p-4 border-t border-border/30 relative"
+          ref={userMenuRef}
+        >
           <button
             className="w-full p-2 text-left hover:bg-muted/50 transition-all duration-200 flex items-center gap-3 rounded-xl group relative"
             onClick={() => {

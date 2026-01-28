@@ -72,7 +72,9 @@ export function TunnelCard({
       if (!isHttp) return { display, copy: display };
 
       const protocol = typeUpper === "HTTPS" ? "https" : "http";
-      const copy = display.includes("://") ? display : `${protocol}://${display}`;
+      const copy = display.includes("://")
+        ? display
+        : `${protocol}://${display}`;
       return { display, copy };
     }
 

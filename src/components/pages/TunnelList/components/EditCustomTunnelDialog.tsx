@@ -39,7 +39,7 @@ export function EditCustomTunnelDialog({
         try {
           setLoadingConfig(true);
           const content = await customTunnelService.getCustomTunnelConfig(
-            tunnel.id
+            tunnel.id,
           );
           setConfigContent(content);
         } catch (error) {
@@ -75,10 +75,7 @@ export function EditCustomTunnelDialog({
     try {
       setLoading(true);
 
-      await customTunnelService.updateCustomTunnel(
-        tunnel.id,
-        configContent,
-      );
+      await customTunnelService.updateCustomTunnel(tunnel.id, configContent);
 
       toast.success("自定义隧道更新成功");
       onSuccess();

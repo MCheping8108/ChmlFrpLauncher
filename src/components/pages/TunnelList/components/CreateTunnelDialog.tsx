@@ -17,6 +17,7 @@ import {
   getStoredUser,
   type Node,
   type NodeInfo,
+  type StoredUser,
 } from "@/services/api";
 import { CustomTunnelDialog } from "./CustomTunnelDialog";
 import { NodeSelector } from "./shared/NodeSelector";
@@ -28,6 +29,7 @@ interface CreateTunnelDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   preloadedNodes: Node[] | null;
+  user?: StoredUser | null;
 }
 
 export function CreateTunnelDialog({
@@ -35,6 +37,7 @@ export function CreateTunnelDialog({
   onOpenChange,
   onSuccess,
   preloadedNodes,
+  user,
 }: CreateTunnelDialogProps) {
   const [tunnelType, setTunnelType] = useState<"standard" | "custom">(
     "standard",
@@ -316,22 +319,24 @@ export function CreateTunnelDialog({
             key="step1"
             className="flex-1 flex flex-col min-h-0 py-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
           >
-            <Tabs
-              value={tunnelType}
-              onValueChange={(value) =>
-                setTunnelType(value as "standard" | "custom")
-              }
-              className="mb-4"
-            >
-              <TabsList className="w-full">
-                <TabsTrigger value="standard" className="flex-1">
-                  标准隧道
-                </TabsTrigger>
-                <TabsTrigger value="custom" className="flex-1">
-                  自定义隧道
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {user && (
+              <Tabs
+                value={tunnelType}
+                onValueChange={(value) =>
+                  setTunnelType(value as "standard" | "custom")
+                }
+                className="mb-4"
+              >
+                <TabsList className="w-full">
+                  <TabsTrigger value="standard" className="flex-1">
+                    标准隧道
+                  </TabsTrigger>
+                  <TabsTrigger value="custom" className="flex-1">
+                    自定义隧道
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
 
             <NodeSelector
               nodes={nodes}

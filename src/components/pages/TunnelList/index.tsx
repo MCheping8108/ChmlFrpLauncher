@@ -19,20 +19,29 @@ import { TunnelCard } from "./components/TunnelCard";
 import { CreateTunnelDialog } from "./components/CreateTunnelDialog";
 import { EditTunnelDialog } from "./components/EditTunnelDialog";
 import { EditCustomTunnelDialog } from "./components/EditCustomTunnelDialog";
-import { fetchNodes, type Tunnel, type Node } from "@/services/api";
+import { CustomTunnelDialog } from "./components/CustomTunnelDialog";
+import { fetchNodes, type Tunnel, type Node, type StoredUser } from "@/services/api";
 import type { CustomTunnel } from "@/services/customTunnelService";
 import type { UnifiedTunnel } from "./types";
 
-export function TunnelList() {
+interface TunnelListProps {
+  user: StoredUser | null;
+}
+
+export function TunnelList({ user }: TunnelListProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [loadingCreateDialog, setLoadingCreateDialog] = useState(false);
   const [preloadedNodes, setPreloadedNodes] = useState<Node[] | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [, setLoadingEditDialog] = useState(false);
-  const [preloadedEditNodes, setPreloadedEditNodes] = useState<Node[] | null>(null);
+  const [preloadedEditNodes, setPreloadedEditNodes] = useState<Node[] | null>(
+    null,
+  );
   const [editingTunnel, setEditingTunnel] = useState<Tunnel | null>(null);
   const [editCustomDialogOpen, setEditCustomDialogOpen] = useState(false);
-  const [editingCustomTunnel, setEditingCustomTunnel] = useState<CustomTunnel | null>(null);
+  const [editingCustomTunnel, setEditingCustomTunnel] =
+    useState<CustomTunnel | null>(null);
+  const [createCustomDialogOpen, setCreateCustomDialogOpen] = useState(false);
 
   const {
     tunnels,
@@ -91,18 +100,26 @@ export function TunnelList() {
 
   // 预加载节点数据并打开创建对话框
   const handleOpenCreateDialog = useCallback(async () => {
+    // 未登录时，直接打开自定义隧道对话框
+    if (!user) {
+      setCreateCustomDialogOpen(true);
+      return;
+    }
+
+    // 已登录时，获取节点列表并打开标准创建对话框
     try {
       setLoadingCreateDialog(true);
       const nodes = await fetchNodes();
       setPreloadedNodes(nodes);
       setCreateDialogOpen(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "获取节点列表失败";
+      const message =
+        error instanceof Error ? error.message : "获取节点列表失败";
       toast.error(message);
     } finally {
       setLoadingCreateDialog(false);
     }
-  }, []);
+  }, [user]);
 
   // 预加载节点数据并打开编辑对话框
   const handleOpenEditDialog = useCallback(async (tunnel: Tunnel) => {
@@ -113,21 +130,25 @@ export function TunnelList() {
       setEditingTunnel(tunnel);
       setEditDialogOpen(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "获取节点列表失败";
+      const message =
+        error instanceof Error ? error.message : "获取节点列表失败";
       toast.error(message);
     } finally {
       setLoadingEditDialog(false);
     }
   }, []);
 
-  const handleEdit = useCallback((tunnel: UnifiedTunnel) => {
-    if (tunnel.type === "api") {
-      handleOpenEditDialog(tunnel.data);
-    } else if (tunnel.type === "custom") {
-      setEditingCustomTunnel(tunnel.data);
-      setEditCustomDialogOpen(true);
-    }
-  }, [handleOpenEditDialog]);
+  const handleEdit = useCallback(
+    (tunnel: UnifiedTunnel) => {
+      if (tunnel.type === "api") {
+        handleOpenEditDialog(tunnel.data);
+      } else if (tunnel.type === "custom") {
+        setEditingCustomTunnel(tunnel.data);
+        setEditCustomDialogOpen(true);
+      }
+    },
+    [handleOpenEditDialog],
+  );
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -148,7 +169,10 @@ export function TunnelList() {
         >
           {loadingCreateDialog ? (
             <>
-              <svg className="animate-spin h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24">
+              <svg
+                className="animate-spin h-3.5 w-3.5 mr-1.5"
+                viewBox="0 0 24 24"
+              >
                 <circle
                   className="opacity-25"
                   cx="12"
@@ -200,7 +224,10 @@ export function TunnelList() {
             >
               {loadingCreateDialog ? (
                 <>
-                  <svg className="animate-spin h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24">
+                  <svg
+                    className="animate-spin h-3.5 w-3.5 mr-1.5"
+                    viewBox="0 0 24 24"
+                  >
                     <circle
                       className="opacity-25"
                       cx="12"
@@ -265,6 +292,7 @@ export function TunnelList() {
         }}
         onSuccess={refreshTunnels}
         preloadedNodes={preloadedNodes}
+        user={user}
       />
 
       <EditTunnelDialog
@@ -285,6 +313,12 @@ export function TunnelList() {
         onOpenChange={setEditCustomDialogOpen}
         onSuccess={refreshTunnels}
         tunnel={editingCustomTunnel}
+      />
+
+      <CustomTunnelDialog
+        open={createCustomDialogOpen}
+        onOpenChange={setCreateCustomDialogOpen}
+        onSuccess={refreshTunnels}
       />
     </div>
   );
