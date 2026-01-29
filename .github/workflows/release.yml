@@ -100,7 +100,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'ChmlFrpLauncher ${{ github.ref_name }}'
           releaseBody: |
-            ## 🚀 更新内容
+            ## 更新内容
 
             ${{ steps.changelog.outputs.changelog }}
 
