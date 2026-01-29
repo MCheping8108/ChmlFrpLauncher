@@ -70,7 +70,7 @@ export function NodeSelector({
                         type="button"
                         onClick={() => handleNodeSelect(node)}
                         disabled={loading}
-                        className="group relative px-3 pt-2.5 pb-3 border border-border/60 rounded-xl hover:border-primary hover:bg-accent/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-br from-background to-muted/20"
+                        className="group relative px-3 pt-2.5 pb-3 border border-border/60 rounded-xl hover:border-primary hover:bg-accent/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/0 to-primary/0 group-hover:from-primary/5 group-hover:to-transparent transition-all" />
                         <div className="relative space-y-1">
@@ -148,7 +148,7 @@ export function NodeSelector({
                         type="button"
                         onClick={() => handleNodeSelect(node)}
                         disabled={loading}
-                        className="group relative px-3 pt-2.5 pb-3 border border-border/60 rounded-xl hover:border-primary hover:bg-accent/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-br from-background to-muted/20"
+                        className="group relative px-3 pt-2.5 pb-3 border border-border/60 rounded-xl hover:border-primary hover:bg-accent/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/0 to-primary/0 group-hover:from-primary/5 group-hover:to-transparent transition-all" />
                         <div className="relative space-y-1">

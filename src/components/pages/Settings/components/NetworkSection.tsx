@@ -22,7 +22,7 @@ export function NetworkSection({
         <Network className="w-4 h-4" />
         <span>网络</span>
       </div>
-      <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+      <div className="rounded-lg bg-card overflow-hidden">
         <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>绕过代理</ItemTitle>

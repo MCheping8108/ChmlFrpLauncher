@@ -333,25 +333,12 @@ export function Sidebar({
 
   if (mode === "classic") {
     const isFrosted = effectType === "frosted";
-    const isTranslucent = effectType === "translucent";
     return (
       <div
         className={cn(
-          "w-56 border-r border-border/40 flex flex-col h-full relative",
-          isFrosted
-            ? "bg-card/70 backdrop-blur-md"
-            : isTranslucent
-              ? "bg-card/65"
-              : "bg-card",
+          "w-56 flex flex-col h-full relative bg-card",
+          isFrosted && "backdrop-blur-md",
         )}
-        style={{
-          ...(isFrosted
-            ? {
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }
-            : {}),
-        }}
       >
         {isMacOS && !showTitleBar ? (
           <div
@@ -455,21 +442,9 @@ export function Sidebar({
           {user && userMenuOpen && (
             <div
               className={cn(
-                "absolute left-4 right-4 bottom-[calc(100%+8px)] rounded-xl border border-border/40 shadow-xl z-10 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200",
-                effectType === "frosted"
-                  ? "bg-card/98 backdrop-blur-md"
-                  : effectType === "translucent"
-                    ? "bg-card/85"
-                    : "bg-card",
+                "absolute left-4 right-4 bottom-[calc(100%+8px)] rounded-xl border border-border/40 shadow-xl z-10 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 bg-card",
+                effectType === "frosted" && "backdrop-blur-md",
               )}
-              style={
-                effectType === "frosted"
-                  ? {
-                      backdropFilter: "blur(12px)",
-                      WebkitBackdropFilter: "blur(12px)",
-                    }
-                  : undefined
-              }
             >
               <div className="p-1">
                 <button
@@ -494,22 +469,15 @@ export function Sidebar({
   }
 
   const isFrosted = effectType === "frosted";
-  const isTranslucent = effectType === "translucent";
   return (
     <>
       <div
         className={cn(
-          "relative h-full overflow-hidden border-r border-border/40 animate-in slide-in-from-left-2 duration-300 floating-sidebar",
-          isFrosted
-            ? "bg-card/70 backdrop-blur-md"
-            : isTranslucent
-              ? "bg-card/65"
-              : "bg-card",
+          "relative h-full overflow-hidden animate-in slide-in-from-left-2 duration-300 floating-sidebar bg-card",
+          isFrosted && "backdrop-blur-md",
         )}
         style={{
           borderRadius: "18px",
-          backdropFilter: isFrosted ? "blur(12px)" : "none",
-          WebkitBackdropFilter: isFrosted ? "blur(12px)" : "none",
           transition: "width 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
           width: collapsed ? `${collapsedWidth ?? 66}px` : "224px",
         }}
@@ -692,21 +660,9 @@ export function Sidebar({
             {user && userMenuOpen && (
               <div
                 className={cn(
-                  "absolute left-3 right-3 bottom-full mb-2 rounded-2xl border border-border/40 shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200",
-                  isFrosted
-                    ? "bg-card/98 backdrop-blur-md"
-                    : isTranslucent
-                      ? "bg-card/85"
-                      : "bg-card",
+                  "absolute left-3 right-3 bottom-full mb-2 rounded-2xl border border-border/40 shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 bg-card",
+                  isFrosted && "backdrop-blur-md",
                 )}
-                style={
-                  isFrosted
-                    ? {
-                        backdropFilter: "blur(12px)",
-                        WebkitBackdropFilter: "blur(12px)",
-                      }
-                    : undefined
-                }
               >
                 <div className="px-4 py-3 bg-foreground/[0.02] border-b border-border/30">
                   <div className="flex items-center gap-3">

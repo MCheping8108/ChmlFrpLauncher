@@ -20,7 +20,12 @@ import { CreateTunnelDialog } from "./components/CreateTunnelDialog";
 import { EditTunnelDialog } from "./components/EditTunnelDialog";
 import { EditCustomTunnelDialog } from "./components/EditCustomTunnelDialog";
 import { CustomTunnelDialog } from "./components/CustomTunnelDialog";
-import { fetchNodes, type Tunnel, type Node, type StoredUser } from "@/services/api";
+import {
+  fetchNodes,
+  type Tunnel,
+  type Node,
+  type StoredUser,
+} from "@/services/api";
 import type { CustomTunnel } from "@/services/customTunnelService";
 import type { UnifiedTunnel } from "./types";
 
