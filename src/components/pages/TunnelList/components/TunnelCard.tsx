@@ -199,7 +199,7 @@ export function TunnelCard({
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground bg-muted/10 uppercase tracking-wider">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-muted-foreground bg-muted/10 uppercase tracking-wider">
                     {isCustom
                       ? tunnel.data.tunnel_type || "自定义"
                       : tunnel.data.type}
