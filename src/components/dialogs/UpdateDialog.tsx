@@ -171,7 +171,7 @@ export function UpdateDialog({
 
         {markdownContent && (
           <div className="px-6 py-4">
-            <ScrollArea className="max-h-[350px] pr-4">
+            <ScrollArea className="max-h-[350px] pr-4 overflow-auto">
               <div
                 className="prose prose-sm dark:prose-invert max-w-none update-content"
                 dangerouslySetInnerHTML={{ __html: markdownContent }}
@@ -204,7 +204,7 @@ export function UpdateDialog({
           </div>
         )}
 
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-muted/20">
+        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-muted/20 z-10 flex items-center justify-between gap-3">
           {!isDownloading ? (
             <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-auto">
               <Button
