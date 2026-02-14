@@ -1,4 +1,4 @@
-use crate::models::{FrpcProcesses, LogMessage, ProcessGuardInfo, ProcessGuardState, TunnelType};
+use crate::models::{FrpcProcesses, LogMessage, ProcessGuardInfo, ProcessGuardState, TunnelConfig, TunnelType};
 use std::sync::atomic::Ordering;
 use std::thread;
 use std::time::Duration;
@@ -51,7 +51,7 @@ pub async fn get_process_guard_enabled(
 #[tauri::command]
 pub async fn add_guarded_process(
     tunnel_id: i32,
-    user_token: String,
+    config: TunnelConfig,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<(), String> {
     if !guard_state.enabled.load(Ordering::SeqCst) {
@@ -67,7 +67,7 @@ pub async fn add_guarded_process(
         tunnel_id,
         ProcessGuardInfo {
             tunnel_id,
-            tunnel_type: TunnelType::Api { user_token },
+            tunnel_type: TunnelType::Api { config },
         },
     );
 
@@ -264,12 +264,11 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                         let guard_state_state = app_clone.state::<ProcessGuardState>();
 
                         let result = match tunnel_type {
-                            TunnelType::Api { user_token } => {
+                            TunnelType::Api { config } => {
                                 tauri::async_runtime::block_on(async {
                                     crate::commands::process::start_frpc(
                                         app_clone.clone(),
-                                        tunnel_id,
-                                        user_token.clone(),
+                                        config.clone(),
                                         processes_state,
                                         guard_state_state,
                                     )

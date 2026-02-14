@@ -67,7 +67,7 @@ pub async fn save_custom_tunnel(
 
         let parsed_info = parse_ini_config(&single_ini)?;
 
-        let config_file_name = format!("{}.ini", tunnel_name);
+        let config_file_name = format!("z_{}.ini", tunnel_name);
         let config_file_path = app_dir.join(&config_file_name);
 
         eprintln!("[自定义隧道] 配置文件路径: {:?}", config_file_path);
@@ -205,7 +205,7 @@ pub async fn get_custom_tunnel_config(
         .app_data_dir()
         .map_err(|e| format!("获取应用目录失败: {}", e))?;
 
-    let config_file_path = app_dir.join(format!("{}.ini", tunnel_id));
+    let config_file_path = app_dir.join(format!("z_{}.ini", tunnel_id));
 
     if !config_file_path.exists() {
         return Err("配置文件不存在".to_string());
@@ -231,7 +231,7 @@ pub async fn update_custom_tunnel(
     let parsed_info = parse_ini_config(&config_content)?;
 
     // 配置文件路径
-    let config_file_name = format!("{}.ini", tunnel_id);
+    let config_file_name = format!("z_{}.ini", tunnel_id);
     let config_file_path = app_dir.join(&config_file_name);
 
     // 写入新的配置内容
@@ -309,7 +309,7 @@ pub async fn delete_custom_tunnel(
         .map_err(|e| format!("获取应用目录失败: {}", e))?;
 
     // 删除配置文件
-    let config_file = app_dir.join(format!("{}.ini", tunnel_id));
+    let config_file = app_dir.join(format!("z_{}.ini", tunnel_id));
     if config_file.exists() {
         fs::remove_file(&config_file).map_err(|e| format!("删除配置文件失败: {}", e))?;
     }
@@ -384,7 +384,7 @@ pub async fn start_custom_tunnel(
         }
     }
 
-    let config_file = format!("{}.ini", tunnel_id);
+    let config_file = format!("z_{}.ini", tunnel_id);
     let config_path = app_dir.join(&config_file);
 
     if !config_path.exists() {

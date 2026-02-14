@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
+import type { Tunnel } from "./api";
 
 export interface LogMessage {
   tunnel_id: number;
@@ -7,14 +8,42 @@ export interface LogMessage {
   timestamp: string;
 }
 
+export interface TunnelConfig {
+  tunnel_id: number;
+  tunnel_name: string;
+  user_token: string;
+  server_addr: string;
+  server_port: number;
+  node_token: string;
+  tunnel_type: string;
+  local_ip: string;
+  local_port: number;
+  remote_port?: number;
+  custom_domains?: string;
+}
+
 export class FrpcManager {
   private unlisten?: UnlistenFn;
 
-  async startTunnel(tunnelId: number, userToken: string): Promise<string> {
-    return await invoke<string>("start_frpc", {
-      tunnelId,
-      userToken,
-    });
+  async startTunnel(tunnel: Tunnel, userToken: string): Promise<string> {
+    const config: TunnelConfig = {
+      tunnel_id: tunnel.id,
+      tunnel_name: tunnel.name,
+      user_token: userToken,
+      server_addr: tunnel.node_ip,
+      server_port: tunnel.server_port,
+      node_token: tunnel.node_token,
+      tunnel_type: tunnel.type,
+      local_ip: tunnel.localip,
+      local_port: tunnel.nport,
+      remote_port: tunnel.type === "tcp" ? (tunnel.dorp ? parseInt(tunnel.dorp) : undefined) : undefined,
+      custom_domains: tunnel.type === "http" || tunnel.type === "https" ? tunnel.dorp : undefined,
+    };
+
+    console.log("[调试] 启动隧道配置:", config);
+    console.log("[调试] 原始隧道数据:", tunnel);
+
+    return await invoke<string>("start_frpc", { config });
   }
 
   async stopTunnel(tunnelId: number): Promise<string> {

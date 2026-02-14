@@ -196,7 +196,21 @@ pub fn run() {
             });
 
             let app_handle = app.handle().clone();
-            commands::process_guard::start_guard_monitor(app_handle);
+            commands::process_guard::start_guard_monitor(app_handle.clone());
+
+            // 清理官方隧道的配置文件（只清理 g_*.ini 文件）
+            if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
+                if let Ok(entries) = std::fs::read_dir(&app_data_dir) {
+                    for entry in entries.flatten() {
+                        if let Ok(file_name) = entry.file_name().into_string() {
+                            // 只删除官方隧道的配置文件（g_*.ini）
+                            if file_name.starts_with("g_") && file_name.ends_with(".ini") {
+                                let _ = std::fs::remove_file(entry.path());
+                            }
+                        }
+                    }
+                }
+            }
 
             Ok(())
         })

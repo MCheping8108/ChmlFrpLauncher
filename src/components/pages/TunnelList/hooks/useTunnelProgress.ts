@@ -136,7 +136,7 @@ export function useTunnelProgress(
             // 忽略错误
           }
 
-          await frpcManager.startTunnel(tunnelId, user.usertoken);
+          await frpcManager.startTunnel(tunnel, user.usertoken);
           setRunningTunnels((prev) => new Set(prev).add(tunnelKey));
 
           let hasChecked = false;
@@ -264,13 +264,20 @@ export function useTunnelProgress(
       });
 
       try {
-        await frpcManager.fixFrpcIniTls();
+        // TLS 错误修复：由于现在使用独立配置文件，不再需要修改 frpc.ini
+        // 直接重启隧道即可，因为配置文件会在启动时重新生成
 
         try {
           await frpcManager.stopTunnel(tunnelId);
           await new Promise((resolve) => setTimeout(resolve, 500));
         } catch {
           // 忽略错误
+        }
+
+        const tunnel = tunnels.find((t) => t.id === tunnelId);
+        if (!tunnel) {
+          toast.error("未找到隧道信息", { duration: 5000 });
+          return;
         }
 
         const tunnelKey = `api_${tunnelId}`;
@@ -286,7 +293,7 @@ export function useTunnelProgress(
           return next;
         });
 
-        await frpcManager.startTunnel(tunnelId, user.usertoken);
+        await frpcManager.startTunnel(tunnel, user.usertoken);
         setRunningTunnels((prev) => new Set(prev).add(tunnelKey));
 
         let hasChecked = false;

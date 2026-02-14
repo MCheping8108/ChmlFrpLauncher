@@ -27,7 +27,7 @@ export function useDeepLink(
   setUser: (user: StoredUser | null) => void,
 ) {
   const pendingDeepLinkRef = useRef<DeepLinkData | null>(null);
-  const isAppReadyRef = useRef(false);
+  const isAppReady = true;
 
   const handleDeepLinkInternal = useCallback(
     async (data: DeepLinkData) => {
@@ -131,7 +131,7 @@ export function useDeepLink(
           duration: Infinity,
         });
 
-        await frpcManager.startTunnel(data.tunnelId, tokenToUse);
+        await frpcManager.startTunnel(tunnel, tokenToUse);
 
         const isHttpType =
           tunnel.type.toUpperCase() === "HTTP" ||
@@ -194,7 +194,7 @@ export function useDeepLink(
 
   useEffect(() => {
     const wrappedHandler = async (data: DeepLinkData) => {
-      if (!isAppReadyRef.current) {
+      if (!isAppReady) {
         pendingDeepLinkRef.current = data;
         return;
       }
@@ -207,11 +207,11 @@ export function useDeepLink(
     return () => {
       deepLinkService.stopListening();
     };
-  }, [handleDeepLinkInternal]);
+  }, [handleDeepLinkInternal, isAppReady]);
 
   useEffect(() => {
     if (
-      isAppReadyRef.current &&
+      isAppReady &&
       pendingDeepLinkRef.current &&
       user?.usertoken
     ) {
@@ -221,12 +221,7 @@ export function useDeepLink(
         handleDeepLinkInternal(pendingData);
       }, 500);
     }
-  }, [user?.usertoken, handleDeepLinkInternal]);
+  }, [user?.usertoken, handleDeepLinkInternal, isAppReady]);
 
-  useEffect(() => {
-    // 标记应用已准备就绪
-    isAppReadyRef.current = true;
-  }, []);
-
-  return { isAppReady: isAppReadyRef.current };
+  return { isAppReady };
 }

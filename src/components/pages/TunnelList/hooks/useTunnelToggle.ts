@@ -80,7 +80,7 @@ export function useTunnelToggle({
         if (tunnel.type === "api") {
           const user = getStoredUser();
           message = await frpcManager.startTunnel(
-            tunnel.data.id,
+            tunnel.data,
             user!.usertoken!,
           );
         } else {
