@@ -387,7 +387,21 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
     content.push_str("[common]\n");
     content.push_str(&format!("server_addr = {}\n", config.server_addr));
     content.push_str(&format!("server_port = {}\n", config.server_port));
-    content.push_str("tls_enable = false\n");
+
+    // 添加代理配置（如果启用）
+    if let Some(ref proxy_url) = config.http_proxy {
+        content.push_str(&format!("http_proxy = {}\n", proxy_url));
+    }
+
+    // TLS 配置
+    content.push_str(&format!("tls_enable = {}\n", config.force_tls));
+
+    // 多路复用配置
+    content.push_str(&format!("tcp_mux = {}\n", config.tcp_mux));
+
+    // 连接池数量
+    content.push_str("pool_count = 5\n");
+
     content.push_str(&format!("user = {}\n", config.user_token));
     content.push_str(&format!("token = {}\n", config.node_token));
     content.push_str("\n");
@@ -400,11 +414,16 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
 
     // 根据隧道类型添加不同的配置
     match config.tunnel_type.as_str() {
-        "tcp" => {
+        "tcp" | "udp" => {
             if let Some(remote_port) = config.remote_port {
                 content.push_str(&format!("remote_port = {}\n", remote_port));
             } else {
-                return Err("TCP 隧道缺少 remote_port 参数".to_string());
+                return Err("TCP/UDP 隧道缺少 remote_port 参数".to_string());
+            }
+
+            // KCP 优化（仅对 TCP/UDP 隧道）
+            if config.kcp_optimization {
+                content.push_str("protocol = kcp\n");
             }
         }
         "http" | "https" => {

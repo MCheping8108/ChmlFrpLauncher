@@ -6,6 +6,7 @@ import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
 import { useProcessGuard } from "./hooks/useProcessGuard";
+import { useProxy } from "./hooks/useProxy";
 import {
   getInitialBypassProxy,
   getInitialShowTitleBar,
@@ -70,6 +71,8 @@ export function Settings() {
   const { closeToTrayEnabled, handleToggleCloseToTray } = useCloseBehavior();
 
   const { guardEnabled, guardLoading, handleToggleGuard } = useProcessGuard();
+
+  const { proxyConfig, updateProxyConfig } = useProxy();
 
   const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
     getInitialBypassProxy(),
@@ -210,6 +213,8 @@ export function Settings() {
         <NetworkSection
           bypassProxy={bypassProxy}
           setBypassProxy={setBypassProxy}
+          proxyConfig={proxyConfig}
+          updateProxyConfig={updateProxyConfig}
         />
 
         <SystemSection

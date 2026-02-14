@@ -125,5 +125,9 @@ pub struct TunnelConfig {
     pub local_port: u16,
     pub remote_port: Option<u16>, // tcp 类型使用
     pub custom_domains: Option<String>, // http/https 类型使用
+    pub http_proxy: Option<String>, // 代理配置
+    pub tcp_mux: bool, // 多路复用
+    pub force_tls: bool, // 强制 TLS
+    pub kcp_optimization: bool, // KCP 优化
 }
 

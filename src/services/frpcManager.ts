@@ -20,12 +20,45 @@ export interface TunnelConfig {
   local_port: number;
   remote_port?: number;
   custom_domains?: string;
+  http_proxy?: string;
+  tcp_mux: boolean;
+  force_tls: boolean;
+  kcp_optimization: boolean;
 }
 
 export class FrpcManager {
   private unlisten?: UnlistenFn;
 
   async startTunnel(tunnel: Tunnel, userToken: string): Promise<string> {
+    // 获取代理配置
+    let httpProxy: string | undefined;
+    let tcpMux = true;
+    let forceTls = false;
+    let kcpOptimization = false;
+
+    try {
+      const proxyConfigStr = localStorage.getItem("frpc_proxy_config");
+      if (proxyConfigStr) {
+        const proxyConfig = JSON.parse(proxyConfigStr);
+
+        // 代理配置
+        if (proxyConfig.enabled && proxyConfig.host && proxyConfig.port) {
+          const auth =
+            proxyConfig.username && proxyConfig.password
+              ? `${proxyConfig.username}:${proxyConfig.password}@`
+              : "";
+          httpProxy = `${proxyConfig.type}://${auth}${proxyConfig.host}:${proxyConfig.port}`;
+        }
+
+        // 其他配置
+        tcpMux = proxyConfig.tcpMux !== undefined ? proxyConfig.tcpMux : true;
+        forceTls = proxyConfig.forceTls || false;
+        kcpOptimization = proxyConfig.kcpOptimization || false;
+      }
+    } catch (error) {
+      console.error("解析代理配置失败:", error);
+    }
+
     const config: TunnelConfig = {
       tunnel_id: tunnel.id,
       tunnel_name: tunnel.name,
@@ -38,6 +71,10 @@ export class FrpcManager {
       local_port: tunnel.nport,
       remote_port: tunnel.type === "tcp" ? (tunnel.dorp ? parseInt(tunnel.dorp) : undefined) : undefined,
       custom_domains: tunnel.type === "http" || tunnel.type === "https" ? tunnel.dorp : undefined,
+      http_proxy: httpProxy,
+      tcp_mux: tcpMux,
+      force_tls: forceTls,
+      kcp_optimization: kcpOptimization,
     };
 
     console.log("[调试] 启动隧道配置:", config);
