@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,38 +62,20 @@ export function TunnelList({ user }: TunnelListProps) {
     [tunnels],
   );
 
-  const clearStartingTunnelRef = useRef<((tunnelKey: string) => void) | null>(
-    null,
-  );
-
-  const handleTunnelStartSuccess = useCallback((tunnelKey: string) => {
-    clearStartingTunnelRef.current?.(tunnelKey);
-  }, []);
-
-  const handleTunnelStartError = useCallback((tunnelKey: string) => {
-    clearStartingTunnelRef.current?.(tunnelKey);
-  }, []);
-
   const { tunnelProgress, setTunnelProgress, timeoutRefs, successTimeoutRefs } =
     useTunnelProgress(
       apiTunnels,
       runningTunnels,
       setRunningTunnels,
-      handleTunnelStartSuccess,
-      handleTunnelStartError,
     );
 
-  const { togglingTunnels, handleToggle, clearStartingTunnel } =
+  const { togglingTunnels, handleToggle } =
     useTunnelToggle({
       setTunnelProgress,
       setRunningTunnels,
       timeoutRefs,
       successTimeoutRefs,
     });
-
-  useEffect(() => {
-    clearStartingTunnelRef.current = clearStartingTunnel;
-  }, [clearStartingTunnel]);
 
   // 自动启动隧道
   useAutoStartTunnels({

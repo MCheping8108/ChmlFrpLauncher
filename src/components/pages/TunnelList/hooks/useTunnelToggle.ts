@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
 import { getStoredUser } from "@/services/api";
@@ -26,7 +26,6 @@ export function useTunnelToggle({
   const [togglingTunnels, setTogglingTunnels] = useState<Set<string>>(
     new Set(),
   );
-  const startingTunnelKeyRef = useRef<string | null>(null);
 
   const handleToggle = async (tunnel: UnifiedTunnel, enabled: boolean) => {
     const tunnelKey =
@@ -49,22 +48,10 @@ export function useTunnelToggle({
       return;
     }
 
-    if (
-      enabled &&
-      startingTunnelKeyRef.current !== null &&
-      startingTunnelKeyRef.current !== tunnelKey
-    ) {
-      toast.info("请等待当前隧道启动完成后再启动其他隧道", {
-        duration: 3000,
-      });
-      return;
-    }
-
     setTogglingTunnels((prev) => new Set(prev).add(tunnelKey));
 
     try {
       if (enabled) {
-        startingTunnelKeyRef.current = tunnelKey;
         setTunnelProgress((prev) => {
           const next = new Map(prev);
           const resetProgress = {
@@ -85,9 +72,6 @@ export function useTunnelToggle({
           );
         } else {
           message = await customTunnelService.startCustomTunnel(tunnel.data.id);
-          if (startingTunnelKeyRef.current === tunnelKey) {
-            startingTunnelKeyRef.current = null;
-          }
         }
 
         toast.success(message || `隧道 ${tunnelName} 已启动`);
@@ -130,9 +114,6 @@ export function useTunnelToggle({
       toast.error(message);
 
       if (enabled) {
-        if (startingTunnelKeyRef.current === tunnelKey) {
-          startingTunnelKeyRef.current = null;
-        }
         const errorProgress = {
           progress: 100,
           isError: true,
@@ -153,15 +134,8 @@ export function useTunnelToggle({
     }
   };
 
-  const clearStartingTunnel = (tunnelKey: string) => {
-    if (startingTunnelKeyRef.current === tunnelKey) {
-      startingTunnelKeyRef.current = null;
-    }
-  };
-
   return {
     togglingTunnels,
     handleToggle,
-    clearStartingTunnel,
   };
 }

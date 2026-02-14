@@ -14,8 +14,6 @@ export function useTunnelProgress(
   tunnels: Tunnel[],
   runningTunnels: Set<string>,
   setRunningTunnels: Dispatch<SetStateAction<Set<string>>>,
-  onTunnelStartSuccess?: (tunnelKey: string) => void,
-  onTunnelStartError?: (tunnelKey: string) => void,
 ) {
   const [tunnelProgress, setTunnelProgress] = useState<
     Map<string, TunnelProgress>
@@ -42,13 +40,6 @@ export function useTunnelProgress(
   const playedSoundRef = useRef<Set<string>>(new Set());
   const processedLogsCountRef = useRef<number>(0);
   const loggedSuccessRef = useRef<Set<number>>(new Set());
-  const onTunnelStartSuccessRef = useRef(onTunnelStartSuccess);
-  const onTunnelStartErrorRef = useRef(onTunnelStartError);
-
-  useEffect(() => {
-    onTunnelStartSuccessRef.current = onTunnelStartSuccess;
-    onTunnelStartErrorRef.current = onTunnelStartError;
-  }, [onTunnelStartSuccess, onTunnelStartError]);
 
   const handleDuplicateTunnelError = useCallback(
     async (tunnelId: number, tunnelName: string) => {
@@ -492,14 +483,13 @@ export function useTunnelProgress(
                     isError: true,
                   };
                   tunnelProgressCache.set(tunnelId, errorProgress);
-                  onTunnelStartErrorRef.current?.(tunnelKey);
-                  
+
                   if (!playedSoundRef.current.has(tunnelKey)) {
                     playedSoundRef.current.add(tunnelKey);
                     const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
                     playTunnelSound("error", soundEnabled);
                   }
-                  
+
                   return new Map(prev).set(tunnelKey, errorProgress);
                 }
                 return prev;
@@ -525,8 +515,7 @@ export function useTunnelProgress(
             if (successTimeoutRefs.current.has(tunnelKey)) {
               clearTimeout(successTimeoutRefs.current.get(tunnelKey)!);
             }
-            onTunnelStartSuccessRef.current?.(tunnelKey);
-            
+
             if (!playedSoundRef.current.has(tunnelKey)) {
               playedSoundRef.current.add(tunnelKey);
               const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
@@ -708,8 +697,6 @@ export function useTunnelProgress(
               timeoutRefs.current.delete(tunnelKey);
             }
 
-            onTunnelStartErrorRef.current?.(tunnelKey);
-            
             if (!playedSoundRef.current.has(tunnelKey)) {
               playedSoundRef.current.add(tunnelKey);
               const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
@@ -788,7 +775,6 @@ export function useTunnelProgress(
                   isSuccess: false,
                 };
                 tunnelProgressCache.set(tunnel.id, errorProgress);
-                onTunnelStartErrorRef.current?.(tunnelKey);
                 return new Map(prev).set(tunnelKey, errorProgress);
               }
               return prev;
