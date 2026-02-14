@@ -117,15 +117,25 @@ export function Settings() {
     window.dispatchEvent(new Event("videoVolumeChanged"));
   }, [videoVolume]);
 
+  const handleSidebarModeChange = useCallback(
+    (newMode: SidebarMode) => {
+      setSidebarMode(newMode);
+      localStorage.setItem("sidebarMode", newMode);
+      window.dispatchEvent(new Event("sidebarModeChanged"));
+
+      if (newMode === "floating" && !showTitleBar) {
+        setShowTitleBar(true);
+        localStorage.setItem("showTitleBar", "true");
+        window.dispatchEvent(new Event("titleBarVisibilityChanged"));
+      }
+    },
+    [showTitleBar],
+  );
+
   useEffect(() => {
     localStorage.setItem("sidebarMode", sidebarMode);
     window.dispatchEvent(new Event("sidebarModeChanged"));
-
-    // 如果切换到悬浮菜单模式，自动开启顶部栏
-    if (sidebarMode === "floating" && !showTitleBar) {
-      setShowTitleBar(true);
-    }
-  }, [sidebarMode, showTitleBar]);
+  }, [sidebarMode]);
 
   useEffect(() => {
     localStorage.setItem("tunnelSoundEnabled", tunnelSoundEnabled.toString());
@@ -190,7 +200,7 @@ export function Settings() {
           videoVolume={videoVolume}
           setVideoVolume={setVideoVolume}
           sidebarMode={sidebarMode}
-          setSidebarMode={setSidebarMode}
+          setSidebarMode={handleSidebarModeChange}
           tunnelSoundEnabled={tunnelSoundEnabled}
           setTunnelSoundEnabled={setTunnelSoundEnabled}
           onSelectBackgroundImage={handleSelectBackgroundImage}
