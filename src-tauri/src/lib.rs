@@ -125,9 +125,6 @@ pub fn run() {
                                 if std::fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap()).is_ok() {
                                     // 发送事件到前端
                                     let _ = app_handle.emit("auto-start-tunnels-changed", new_setting);
-                                    
-                                    // 注意：菜单项文本可能无法动态更新，需要重新构建菜单
-                                    // 功能仍然正常工作，只是菜单项文本可能不更新
                                 }
                             }
                         }

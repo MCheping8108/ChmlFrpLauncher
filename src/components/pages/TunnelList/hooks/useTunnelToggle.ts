@@ -128,6 +128,7 @@ export function useTunnelToggle({
       const message =
         err instanceof Error ? err.message : `${enabled ? "启动" : "停止"}失败`;
       toast.error(message);
+
       if (enabled) {
         if (startingTunnelKeyRef.current === tunnelKey) {
           startingTunnelKeyRef.current = null;

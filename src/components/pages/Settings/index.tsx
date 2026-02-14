@@ -13,6 +13,7 @@ import {
   getInitialVideoStartSound,
   getInitialVideoVolume,
   getInitialSidebarMode,
+  getInitialTunnelSoundEnabled,
   type EffectType,
   type SidebarMode,
 } from "./utils";
@@ -88,6 +89,9 @@ export function Settings() {
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() =>
     getInitialSidebarMode(),
   );
+  const [tunnelSoundEnabled, setTunnelSoundEnabled] = useState<boolean>(() =>
+    getInitialTunnelSoundEnabled(),
+  );
 
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
@@ -121,7 +125,11 @@ export function Settings() {
     if (sidebarMode === "floating" && !showTitleBar) {
       setShowTitleBar(true);
     }
-  }, [sidebarMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sidebarMode, showTitleBar]);
+
+  useEffect(() => {
+    localStorage.setItem("tunnelSoundEnabled", tunnelSoundEnabled.toString());
+  }, [tunnelSoundEnabled]);
 
   const handleUpdate = useCallback(async () => {
     if (!updateInfo) return;
@@ -183,6 +191,8 @@ export function Settings() {
           setVideoVolume={setVideoVolume}
           sidebarMode={sidebarMode}
           setSidebarMode={setSidebarMode}
+          tunnelSoundEnabled={tunnelSoundEnabled}
+          setTunnelSoundEnabled={setTunnelSoundEnabled}
           onSelectBackgroundImage={handleSelectBackgroundImage}
           onClearBackgroundImage={handleClearBackgroundImage}
         />

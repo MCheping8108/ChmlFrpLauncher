@@ -168,7 +168,7 @@ export function TunnelCard({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className="group rounded-xl overflow-hidden transition-all bg-card">
+        <div className="group rounded-lg overflow-hidden transition-all bg-card">
           <div className="w-full bg-muted/20">
             <Progress
               value={progressValue}
