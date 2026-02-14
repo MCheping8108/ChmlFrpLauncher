@@ -8,6 +8,7 @@ import { logStore } from "@/services/logStore";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { updateService } from "@/services/updateService";
+import { customTunnelService, type CustomTunnel } from "@/services/customTunnelService";
 
 type LogLevel = "software" | "error" | "warning" | "info";
 
@@ -42,6 +43,7 @@ function getLogColorClass(level: LogLevel): string {
 
 export function Logs() {
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
+  const [customTunnels, setCustomTunnels] = useState<CustomTunnel[]>([]);
   const [selectedTunnelId, setSelectedTunnelId] = useState<number | null>(null);
   const [logs, setLogs] = useState<LogMessage[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -54,6 +56,9 @@ export function Logs() {
       try {
         const data = await fetchTunnels();
         setTunnels(data);
+
+        const customData = await customTunnelService.getCustomTunnels();
+        setCustomTunnels(customData);
 
         const runningTunnels = await frpcManager.getRunningTunnels();
         if (runningTunnels.length > 0) {
@@ -304,6 +309,8 @@ export function Logs() {
                 const logLevel = getLogLevel(log.message);
                 const colorClass = getLogColorClass(logLevel);
                 const tunnel = tunnels.find((t) => t.id === log.tunnel_id);
+                const customTunnel = customTunnels.find((t) => t.hashed_id === log.tunnel_id);
+                const tunnelName = tunnel?.name || customTunnel?.name || String(log.tunnel_id);
                 const showTimestamp = logLevel === "software";
                 return (
                   <div
@@ -312,7 +319,7 @@ export function Logs() {
                   >
                     {!selectedTunnelId && (
                       <span className="text-muted-foreground">
-                        [隧道{tunnel?.name || log.tunnel_id}]{" "}
+                        [隧道{tunnelName}]{" "}
                       </span>
                     )}
                     {showTimestamp && (

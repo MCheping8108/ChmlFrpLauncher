@@ -25,6 +25,8 @@ pub struct CustomTunnel {
     pub local_port: Option<u16>,
     pub remote_port: Option<u16>,
     pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hashed_id: Option<i32>,
 }
 
 /// 保存自定义隧道配置
@@ -87,6 +89,7 @@ pub async fn save_custom_tunnel(
             local_port: parsed_info.local_port,
             remote_port: parsed_info.remote_port,
             created_at: chrono::Local::now().to_rfc3339(),
+            hashed_id: Some(string_to_i32(&format!("custom_{}", tunnel_name))),
         };
 
         save_custom_tunnel_list(&app_handle, &custom_tunnel)?;
@@ -137,6 +140,7 @@ pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<Cust
                 t.remote_port = parsed.remote_port.or(t.remote_port);
             }
         }
+        t.hashed_id = Some(string_to_i32(&format!("custom_{}", t.id)));
         updated.push(t);
     }
 
@@ -266,6 +270,7 @@ pub async fn update_custom_tunnel(
         local_port: parsed_info.local_port,
         remote_port: parsed_info.remote_port,
         created_at,
+        hashed_id: Some(string_to_i32(&format!("custom_{}", tunnel_id))),
     };
 
     // 保存到列表

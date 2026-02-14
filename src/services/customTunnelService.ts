@@ -14,6 +14,7 @@ export interface CustomTunnel {
   local_port?: number;
   remote_port?: number;
   created_at: string;
+  hashed_id?: number;
 }
 
 export class CustomTunnelService {
