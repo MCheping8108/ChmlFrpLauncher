@@ -64,6 +64,14 @@ export class FrpcManager {
       this.unlisten = undefined;
     }
   }
+
+  async resolveDomainToIp(domain: string): Promise<string | null> {
+    try {
+      return await invoke<string | null>("resolve_domain_to_ip", { domain });
+    } catch {
+      return null;
+    }
+  }
 }
 
 // 导出单例

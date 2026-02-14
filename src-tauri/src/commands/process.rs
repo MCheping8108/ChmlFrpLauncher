@@ -71,12 +71,12 @@ pub async fn start_frpc(
 
     let pid = child.id();
 
-    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
     let _ = app_handle.emit(
         "frpc-log",
         LogMessage {
             tunnel_id,
-            message: format!("frpc 进程已启动 (PID: {}), 开始连接服务器...", pid),
+            message: format!("[I] [ChmlFrpLauncher] frpc 进程已启动 (PID: {}), 开始连接服务器...", pid),
             timestamp: timestamp.clone(),
         },
     );
@@ -97,7 +97,7 @@ pub async fn start_frpc(
                     // 隐藏用户 token
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查日志是否需要停止守护
                     let guard_state_for_check =
@@ -145,7 +145,7 @@ pub async fn start_frpc(
                     // 隐藏用户 token
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查错误日志是否需要停止守护
                     let guard_state_for_check =
@@ -254,7 +254,7 @@ pub async fn test_log_event(
     tunnel_id: i32,
 ) -> Result<String, String> {
     eprintln!("[测试] 发送测试日志事件");
-    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
     match app_handle.emit(
         "frpc-log",
@@ -336,4 +336,21 @@ pub async fn fix_frpc_ini_tls(app_handle: tauri::AppHandle) -> Result<String, St
         .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
     Ok("已成功将 tls_enable 设置为 true".to_string())
+}
+
+#[tauri::command]
+pub async fn resolve_domain_to_ip(domain: String) -> Result<Option<String>, String> {
+    use std::net::ToSocketAddrs;
+    
+    let addr_str = format!("{}:0", domain);
+    match addr_str.to_socket_addrs() {
+        Ok(addrs) => {
+            for addr in addrs {
+                let ip = addr.ip().to_string();
+                return Ok(Some(ip));
+            }
+            Ok(None)
+        }
+        Err(_) => Ok(None),
+    }
 }

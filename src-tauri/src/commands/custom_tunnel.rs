@@ -405,12 +405,12 @@ pub async fn start_custom_tunnel(
     let pid = child.id();
 
     // 发送启动日志
-    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
     let _ = app_handle.emit(
         "frpc-log",
         LogMessage {
             tunnel_id: tunnel_id_hash,
-            message: format!("自定义隧道 {} 进程已启动 (PID: {})", tunnel_id, pid),
+            message: format!("[I] [ChmlFrpLauncher] 自定义隧道 {} 进程已启动 (PID: {})", tunnel_id, pid),
             timestamp,
         },
     );
@@ -424,7 +424,7 @@ pub async fn start_custom_tunnel(
                 let reader = BufReader::new(stdout);
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查日志是否需要停止守护
                     let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
@@ -460,7 +460,7 @@ pub async fn start_custom_tunnel(
                 let reader = BufReader::new(stderr);
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查错误日志是否需要停止守护
                     let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();

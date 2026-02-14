@@ -9,6 +9,37 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { updateService } from "@/services/updateService";
 
+type LogLevel = "software" | "error" | "warning" | "info";
+
+function getLogLevel(message: string): LogLevel {
+  if (message.includes("[ChmlFrpLauncher]")) {
+    return "software";
+  }
+  if (message.includes("[E]")) {
+    return "error";
+  }
+  if (message.includes("[W]")) {
+    return "warning";
+  }
+  if (message.includes("[I]")) {
+    return "info";
+  }
+  return "software";
+}
+
+function getLogColorClass(level: LogLevel): string {
+  switch (level) {
+    case "error":
+      return "text-red-500";
+    case "warning":
+      return "text-yellow-500";
+    case "software":
+      return "text-blue-400";
+    default:
+      return "text-foreground/90";
+  }
+}
+
 export function Logs() {
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [selectedTunnelId, setSelectedTunnelId] = useState<number | null>(null);
@@ -269,22 +300,30 @@ export function Logs() {
                   : "请选择一个隧道或启动隧道以查看日志"}
               </div>
             ) : (
-              filteredLogs.map((log, index) => (
-                <div
-                  key={index}
-                  className="text-foreground/90 hover:bg-foreground/5 px-2 py-0.5 rounded"
-                >
-                  <span className="text-muted-foreground">
-                    [{log.timestamp}]
-                  </span>
-                  {!selectedTunnelId && (
-                    <span className="text-blue-500 ml-2">
-                      [隧道 {log.tunnel_id}]
-                    </span>
-                  )}
-                  <span className="ml-2">{log.message}</span>
-                </div>
-              ))
+              filteredLogs.map((log, index) => {
+                const logLevel = getLogLevel(log.message);
+                const colorClass = getLogColorClass(logLevel);
+                const tunnel = tunnels.find((t) => t.id === log.tunnel_id);
+                const showTimestamp = logLevel === "software";
+                return (
+                  <div
+                    key={index}
+                    className="hover:bg-foreground/5 px-2 py-0.5 rounded"
+                  >
+                    {!selectedTunnelId && (
+                      <span className="text-muted-foreground">
+                        [隧道{tunnel?.name || log.tunnel_id}]{" "}
+                      </span>
+                    )}
+                    {showTimestamp && (
+                      <span className="text-muted-foreground">
+                        {log.timestamp}{" "}
+                      </span>
+                    )}
+                    <span className={colorClass}>{log.message}</span>
+                  </div>
+                );
+              })
             )}
             <div ref={logsEndRef} />
           </div>

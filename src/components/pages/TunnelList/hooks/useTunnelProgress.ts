@@ -41,6 +41,7 @@ export function useTunnelProgress(
   const processedErrorsRef = useRef<Set<string>>(new Set());
   const playedSoundRef = useRef<Set<string>>(new Set());
   const processedLogsCountRef = useRef<number>(0);
+  const loggedSuccessRef = useRef<Set<number>>(new Set());
   const onTunnelStartSuccessRef = useRef(onTunnelStartSuccess);
   const onTunnelStartErrorRef = useRef(onTunnelStartError);
 
@@ -62,6 +63,24 @@ export function useTunnelProgress(
       }
 
       setFixingTunnels((prev) => new Set(prev).add(tunnelId));
+
+      const timestamp = new Date()
+        .toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+        .replace(/\//g, "/");
+
+      logStore.addLog({
+        tunnel_id: tunnelId,
+        message: "[I] [ChmlFrpLauncher] 隧道重复启动导致隧道启动失败，自动修复中....",
+        timestamp,
+      });
 
       toast.info("隧道重复启动导致隧道启动失败，自动修复中....", {
         duration: 10000,
@@ -452,6 +471,7 @@ export function useTunnelProgress(
             newProgress.startTime = Date.now();
             newProgress.progress = 10;
             playedSoundRef.current.delete(tunnelKey);
+            loggedSuccessRef.current.delete(tunnelId);
             if (timeoutRefs.current.has(tunnelKey)) {
               clearTimeout(timeoutRefs.current.get(tunnelKey)!);
             }
@@ -504,6 +524,77 @@ export function useTunnelProgress(
               playedSoundRef.current.add(tunnelKey);
               const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
               playTunnelSound("success", soundEnabled);
+            }
+
+            const tunnel = tunnels.find((t) => t.id === tunnelId);
+            if (tunnel && !loggedSuccessRef.current.has(tunnelId)) {
+              loggedSuccessRef.current.add(tunnelId);
+              
+              const timestamp = new Date()
+                .toLocaleString("zh-CN", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: false,
+                })
+                .replace(/\//g, "/");
+
+              const tunnelName = tunnel.name || `隧道${tunnelId}`;
+              const isHttpTunnel = tunnel.type?.toLowerCase() === "http" || tunnel.type?.toLowerCase() === "https";
+              
+              if (isHttpTunnel) {
+                const link = tunnel.dorp || "";
+                if (link) {
+                  logStore.addLog({
+                    tunnel_id: tunnelId,
+                    message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"访问。`,
+                    timestamp,
+                  });
+                } else {
+                  logStore.addLog({
+                    tunnel_id: tunnelId,
+                    message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功。`,
+                    timestamp,
+                  });
+                }
+              } else {
+                const link = tunnel.ip && tunnel.dorp ? `${tunnel.ip}:${tunnel.dorp}` : "";
+                const remotePort = tunnel.dorp || "";
+                
+                (async () => {
+                  let fallbackLink = "";
+                  
+                  if (tunnel.ip) {
+                    const resolvedIp = await frpcManager.resolveDomainToIp(tunnel.ip);
+                    if (resolvedIp && remotePort) {
+                      fallbackLink = `${resolvedIp}:${remotePort}`;
+                    }
+                  }
+                  
+                  if (link && fallbackLink && link !== fallbackLink) {
+                    logStore.addLog({
+                      tunnel_id: tunnelId,
+                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"访问（推荐）。如果无法访问，可以尝试使用"${fallbackLink}"链接。`,
+                      timestamp,
+                    });
+                  } else if (link) {
+                    logStore.addLog({
+                      tunnel_id: tunnelId,
+                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"链接。`,
+                      timestamp,
+                    });
+                  } else {
+                    logStore.addLog({
+                      tunnel_id: tunnelId,
+                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功。`,
+                      timestamp,
+                    });
+                  }
+                })();
+              }
             }
             
             const successTimeout = setTimeout(() => {
