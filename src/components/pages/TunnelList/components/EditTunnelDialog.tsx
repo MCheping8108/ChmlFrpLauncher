@@ -18,6 +18,7 @@ import {
   type Node,
   type NodeInfo,
 } from "@/services/api";
+import { frpcManager } from "@/services/frpcManager";
 import { NodeSelector } from "./shared/NodeSelector";
 import { NodeDetails } from "./shared/NodeDetails";
 import { TunnelForm, type TunnelFormData } from "./shared/TunnelForm";
@@ -221,6 +222,26 @@ export function EditTunnelDialog({
       await updateTunnel(tunnelParams);
 
       toast.success("隧道更新成功");
+
+      // 检查是否需要自动重启隧道
+      const restartOnEdit = localStorage.getItem("restartOnEdit") === "true";
+      if (restartOnEdit && tunnel) {
+        const isRunning = await frpcManager.isTunnelRunning(tunnel.id);
+        if (isRunning) {
+          try {
+            await frpcManager.stopTunnel(tunnel.id);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            const user = getStoredUser();
+            if (user?.usertoken) {
+              await frpcManager.startTunnel(tunnel, user.usertoken);
+              toast.success("隧道已自动重启");
+            }
+          } catch (error) {
+            console.error("自动重启隧道失败:", error);
+          }
+        }
+      }
+
       onSuccess();
       handleClose();
     } catch (error) {

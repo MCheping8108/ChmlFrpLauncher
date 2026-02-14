@@ -78,6 +78,25 @@ export function EditCustomTunnelDialog({
       await customTunnelService.updateCustomTunnel(tunnel.id, configContent);
 
       toast.success("自定义隧道更新成功");
+
+      // 检查是否需要自动重启隧道
+      const restartOnEdit = localStorage.getItem("restartOnEdit") === "true";
+      if (restartOnEdit && tunnel) {
+        const isRunning = await customTunnelService.isCustomTunnelRunning(
+          tunnel.id,
+        );
+        if (isRunning) {
+          try {
+            await customTunnelService.stopCustomTunnel(tunnel.id);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await customTunnelService.startCustomTunnel(tunnel.id);
+            toast.success("隧道已自动重启");
+          } catch (error) {
+            console.error("自动重启隧道失败:", error);
+          }
+        }
+      }
+
       onSuccess();
       handleClose();
     } catch (error) {

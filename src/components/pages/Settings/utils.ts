@@ -139,3 +139,9 @@ export const getInitialTunnelSoundEnabled = (): boolean => {
   const stored = localStorage.getItem("tunnelSoundEnabled");
   return stored !== "false";
 };
+
+export const getInitialRestartOnEdit = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("restartOnEdit");
+  return stored === "true";
+};

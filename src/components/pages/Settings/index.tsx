@@ -15,6 +15,7 @@ import {
   getInitialVideoVolume,
   getInitialSidebarMode,
   getInitialTunnelSoundEnabled,
+  getInitialRestartOnEdit,
   type EffectType,
   type SidebarMode,
 } from "./utils";
@@ -95,6 +96,9 @@ export function Settings() {
   const [tunnelSoundEnabled, setTunnelSoundEnabled] = useState<boolean>(() =>
     getInitialTunnelSoundEnabled(),
   );
+  const [restartOnEdit, setRestartOnEdit] = useState<boolean>(() =>
+    getInitialRestartOnEdit(),
+  );
 
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
@@ -143,6 +147,10 @@ export function Settings() {
   useEffect(() => {
     localStorage.setItem("tunnelSoundEnabled", tunnelSoundEnabled.toString());
   }, [tunnelSoundEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem("restartOnEdit", restartOnEdit.toString());
+  }, [restartOnEdit]);
 
   const handleUpdate = useCallback(async () => {
     if (!updateInfo) return;
@@ -228,6 +236,8 @@ export function Settings() {
           guardEnabled={guardEnabled}
           guardLoading={guardLoading}
           onToggleGuard={handleToggleGuard}
+          restartOnEdit={restartOnEdit}
+          onToggleRestartOnEdit={setRestartOnEdit}
         />
 
         <UpdateSection
