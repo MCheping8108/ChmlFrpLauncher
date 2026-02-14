@@ -168,7 +168,7 @@ export function TunnelCard({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className="group rounded-xl overflow-hidden transition-all bg-card">
+        <div className="group rounded-lg overflow-hidden transition-all bg-card">
           <div className="w-full bg-muted/20">
             <Progress
               value={progressValue}
@@ -218,10 +218,16 @@ export function TunnelCard({
                   className="sr-only peer"
                 />
                 <div
-                  className={`w-9 h-5 bg-muted/50 dark:bg-foreground/12 rounded-full peer peer-checked:bg-foreground transition-all duration-300 ${isToggling ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+                  className={`w-9 h-5 rounded-full peer transition-colors duration-300 ${
+                    isRunning
+                      ? "bg-foreground"
+                      : "bg-muted dark:bg-foreground/12"
+                  } ${isToggling ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
                 ></div>
                 <div
-                  className={`absolute left-[2px] top-[2px] w-4 h-4 bg-background rounded-full shadow-sm transition-all duration-300 peer-checked:translate-x-4 ${isToggling ? "scale-90" : ""}`}
+                  className={`absolute left-[2px] top-[3px] w-3.5 h-3.5 bg-background rounded-full shadow-sm transition-transform duration-300 ${
+                    isRunning ? "translate-x-[18px]" : ""
+                  } ${isToggling ? "scale-90" : ""}`}
                 ></div>
               </label>
             </div>

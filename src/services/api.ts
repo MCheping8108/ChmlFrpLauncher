@@ -48,6 +48,9 @@ export interface Tunnel {
   cur_conns: number | null;
   nodestate: string;
   ip: string;
+  node_ip: string;
+  server_port: number;
+  node_token: string;
 }
 
 export interface FlowPoint {

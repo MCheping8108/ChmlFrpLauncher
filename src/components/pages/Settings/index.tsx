@@ -6,6 +6,7 @@ import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
 import { useProcessGuard } from "./hooks/useProcessGuard";
+import { useProxy } from "./hooks/useProxy";
 import {
   getInitialBypassProxy,
   getInitialShowTitleBar,
@@ -13,6 +14,8 @@ import {
   getInitialVideoStartSound,
   getInitialVideoVolume,
   getInitialSidebarMode,
+  getInitialTunnelSoundEnabled,
+  getInitialRestartOnEdit,
   type EffectType,
   type SidebarMode,
 } from "./utils";
@@ -70,6 +73,8 @@ export function Settings() {
 
   const { guardEnabled, guardLoading, handleToggleGuard } = useProcessGuard();
 
+  const { proxyConfig, updateProxyConfig } = useProxy();
+
   const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
     getInitialBypassProxy(),
   );
@@ -87,6 +92,12 @@ export function Settings() {
   );
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() =>
     getInitialSidebarMode(),
+  );
+  const [tunnelSoundEnabled, setTunnelSoundEnabled] = useState<boolean>(() =>
+    getInitialTunnelSoundEnabled(),
+  );
+  const [restartOnEdit, setRestartOnEdit] = useState<boolean>(() =>
+    getInitialRestartOnEdit(),
   );
 
   useEffect(() => {
@@ -113,15 +124,33 @@ export function Settings() {
     window.dispatchEvent(new Event("videoVolumeChanged"));
   }, [videoVolume]);
 
+  const handleSidebarModeChange = useCallback(
+    (newMode: SidebarMode) => {
+      setSidebarMode(newMode);
+      localStorage.setItem("sidebarMode", newMode);
+      window.dispatchEvent(new Event("sidebarModeChanged"));
+
+      if (newMode === "floating" && !showTitleBar) {
+        setShowTitleBar(true);
+        localStorage.setItem("showTitleBar", "true");
+        window.dispatchEvent(new Event("titleBarVisibilityChanged"));
+      }
+    },
+    [showTitleBar],
+  );
+
   useEffect(() => {
     localStorage.setItem("sidebarMode", sidebarMode);
     window.dispatchEvent(new Event("sidebarModeChanged"));
+  }, [sidebarMode]);
 
-    // 如果切换到悬浮菜单模式，自动开启顶部栏
-    if (sidebarMode === "floating" && !showTitleBar) {
-      setShowTitleBar(true);
-    }
-  }, [sidebarMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    localStorage.setItem("tunnelSoundEnabled", tunnelSoundEnabled.toString());
+  }, [tunnelSoundEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem("restartOnEdit", restartOnEdit.toString());
+  }, [restartOnEdit]);
 
   const handleUpdate = useCallback(async () => {
     if (!updateInfo) return;
@@ -182,7 +211,9 @@ export function Settings() {
           videoVolume={videoVolume}
           setVideoVolume={setVideoVolume}
           sidebarMode={sidebarMode}
-          setSidebarMode={setSidebarMode}
+          setSidebarMode={handleSidebarModeChange}
+          tunnelSoundEnabled={tunnelSoundEnabled}
+          setTunnelSoundEnabled={setTunnelSoundEnabled}
           onSelectBackgroundImage={handleSelectBackgroundImage}
           onClearBackgroundImage={handleClearBackgroundImage}
         />
@@ -190,6 +221,8 @@ export function Settings() {
         <NetworkSection
           bypassProxy={bypassProxy}
           setBypassProxy={setBypassProxy}
+          proxyConfig={proxyConfig}
+          updateProxyConfig={updateProxyConfig}
         />
 
         <SystemSection
@@ -203,6 +236,8 @@ export function Settings() {
           guardEnabled={guardEnabled}
           guardLoading={guardLoading}
           onToggleGuard={handleToggleGuard}
+          restartOnEdit={restartOnEdit}
+          onToggleRestartOnEdit={setRestartOnEdit}
         />
 
         <UpdateSection

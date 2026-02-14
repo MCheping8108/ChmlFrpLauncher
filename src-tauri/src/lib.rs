@@ -125,9 +125,6 @@ pub fn run() {
                                 if std::fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap()).is_ok() {
                                     // 发送事件到前端
                                     let _ = app_handle.emit("auto-start-tunnels-changed", new_setting);
-                                    
-                                    // 注意：菜单项文本可能无法动态更新，需要重新构建菜单
-                                    // 功能仍然正常工作，只是菜单项文本可能不更新
                                 }
                             }
                         }
@@ -199,7 +196,21 @@ pub fn run() {
             });
 
             let app_handle = app.handle().clone();
-            commands::process_guard::start_guard_monitor(app_handle);
+            commands::process_guard::start_guard_monitor(app_handle.clone());
+
+            // 清理官方隧道的配置文件（只清理 g_*.ini 文件）
+            if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
+                if let Ok(entries) = std::fs::read_dir(&app_data_dir) {
+                    for entry in entries.flatten() {
+                        if let Ok(file_name) = entry.file_name().into_string() {
+                            // 只删除官方隧道的配置文件（g_*.ini）
+                            if file_name.starts_with("g_") && file_name.ends_with(".ini") {
+                                let _ = std::fs::remove_file(entry.path());
+                            }
+                        }
+                    }
+                }
+            }
 
             Ok(())
         })
@@ -241,7 +252,8 @@ pub fn run() {
             commands::process_guard::add_guarded_custom_tunnel,
             commands::process_guard::remove_guarded_process,
             commands::process_guard::check_log_and_stop_guard,
-            commands::fix_frpc_ini_tls
+            commands::fix_frpc_ini_tls,
+            commands::resolve_domain_to_ip
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

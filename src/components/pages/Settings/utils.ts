@@ -133,3 +133,15 @@ export const getInitialSidebarMode = (): SidebarMode => {
   if (stored === "classic" || stored === "floating") return stored;
   return "classic";
 };
+
+export const getInitialTunnelSoundEnabled = (): boolean => {
+  if (typeof window === "undefined") return true;
+  const stored = localStorage.getItem("tunnelSoundEnabled");
+  return stored !== "false";
+};
+
+export const getInitialRestartOnEdit = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("restartOnEdit");
+  return stored === "true";
+};

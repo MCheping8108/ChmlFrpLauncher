@@ -1,4 +1,4 @@
-use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState};
+use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState, TunnelConfig};
 use crate::utils::sanitize_log;
 use std::io::{BufRead, BufReader};
 use std::process::{Command as StdCommand, Stdio};
@@ -11,11 +11,13 @@ use std::os::windows::process::CommandExt;
 #[tauri::command]
 pub async fn start_frpc(
     app_handle: tauri::AppHandle,
-    tunnel_id: i32,
-    user_token: String,
+    config: TunnelConfig,
     processes: State<'_, FrpcProcesses>,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
+    let tunnel_id = config.tunnel_id;
+    let user_token = config.user_token.clone();
+
     {
         let procs = processes
             .processes
@@ -30,6 +32,13 @@ pub async fn start_frpc(
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?;
+
+    // 生成配置文件（官方隧道使用 g_ 前缀）
+    let config_path = app_dir.join(format!("g_{}.ini", tunnel_id));
+    let config_content = generate_frpc_config(&config)?;
+
+    std::fs::write(&config_path, config_content)
+        .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
     let frpc_path = if cfg!(target_os = "windows") {
         app_dir.join("frpc.exe")
@@ -53,11 +62,9 @@ pub async fn start_frpc(
         }
     }
     let mut cmd = StdCommand::new(&frpc_path);
-    cmd.current_dir(&app_dir) // 没有这个会在src-tauri目录生成frpc.ini文件
-        .arg("-u")
-        .arg(&user_token)
-        .arg("-p")
-        .arg(tunnel_id.to_string())
+    cmd.current_dir(&app_dir)
+        .arg("-c")
+        .arg(&config_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
@@ -71,12 +78,12 @@ pub async fn start_frpc(
 
     let pid = child.id();
 
-    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
     let _ = app_handle.emit(
         "frpc-log",
         LogMessage {
             tunnel_id,
-            message: format!("frpc 进程已启动 (PID: {}), 开始连接服务器...", pid),
+            message: format!("[I] [ChmlFrpLauncher] frpc 进程已启动 (PID: {}), 开始连接服务器...", pid),
             timestamp: timestamp.clone(),
         },
     );
@@ -97,7 +104,7 @@ pub async fn start_frpc(
                     // 隐藏用户 token
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查日志是否需要停止守护
                     let guard_state_for_check =
@@ -145,7 +152,7 @@ pub async fn start_frpc(
                     // 隐藏用户 token
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查错误日志是否需要停止守护
                     let guard_state_for_check =
@@ -185,7 +192,7 @@ pub async fn start_frpc(
         procs.insert(tunnel_id, child);
     }
 
-    let _ = crate::commands::process_guard::add_guarded_process(tunnel_id, user_token, guard_state)
+    let _ = crate::commands::process_guard::add_guarded_process(tunnel_id, config, guard_state)
         .await;
 
     Ok(format!("frpc 已启动 (PID: {})", pid))
@@ -193,6 +200,7 @@ pub async fn start_frpc(
 
 #[tauri::command]
 pub async fn stop_frpc(
+    app_handle: tauri::AppHandle,
     tunnel_id: i32,
     processes: State<'_, FrpcProcesses>,
     guard_state: State<'_, ProcessGuardState>,
@@ -206,7 +214,7 @@ pub async fn stop_frpc(
         .map_err(|e| format!("获取进程锁失败: {}", e))?;
 
     if let Some(mut child) = procs.remove(&tunnel_id) {
-        match child.kill() {
+        let result = match child.kill() {
             Ok(_) => {
                 let _ = child.wait();
                 Ok("frpc 已停止".to_string())
@@ -215,7 +223,19 @@ pub async fn stop_frpc(
                 let _ = child.wait();
                 Err(format!("停止进程失败: {}", e))
             }
+        };
+
+        // 删除配置文件（官方隧道使用 g_ 前缀）
+        let app_dir = app_handle
+            .path()
+            .app_data_dir()
+            .map_err(|e| e.to_string())?;
+        let config_path = app_dir.join(format!("g_{}.ini", tunnel_id));
+        if config_path.exists() {
+            let _ = std::fs::remove_file(&config_path);
         }
+
+        result
     } else {
         Err("该隧道未在运行".to_string())
     }
@@ -254,7 +274,7 @@ pub async fn test_log_event(
     tunnel_id: i32,
 ) -> Result<String, String> {
     eprintln!("[测试] 发送测试日志事件");
-    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
     match app_handle.emit(
         "frpc-log",
@@ -336,4 +356,83 @@ pub async fn fix_frpc_ini_tls(app_handle: tauri::AppHandle) -> Result<String, St
         .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
     Ok("已成功将 tls_enable 设置为 true".to_string())
+}
+
+#[tauri::command]
+pub async fn resolve_domain_to_ip(domain: String) -> Result<Option<String>, String> {
+    use std::net::ToSocketAddrs;
+
+    let addr_str = format!("{}:0", domain);
+    match addr_str.to_socket_addrs() {
+        Ok(addrs) => {
+            for addr in addrs {
+                let ip = addr.ip().to_string();
+                return Ok(Some(ip));
+            }
+            Ok(None)
+        }
+        Err(_) => Ok(None),
+    }
+}
+
+// 生成 frpc 配置文件内容
+fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
+    let mut content = String::new();
+
+    // [common] 部分
+    content.push_str("[common]\n");
+    content.push_str(&format!("server_addr = {}\n", config.server_addr));
+    content.push_str(&format!("server_port = {}\n", config.server_port));
+
+    // 添加代理配置（如果启用）
+    if let Some(ref proxy_url) = config.http_proxy {
+        content.push_str(&format!("http_proxy = {}\n", proxy_url));
+    }
+
+    // TLS 配置
+    content.push_str(&format!("tls_enable = {}\n", config.force_tls));
+
+    // 多路复用配置
+    content.push_str(&format!("tcp_mux = {}\n", config.tcp_mux));
+
+    // 连接池数量
+    content.push_str("pool_count = 5\n");
+
+    // KCP 优化（在 pool_count 下方，仅对 TCP/UDP 隧道）
+    if config.kcp_optimization && (config.tunnel_type == "tcp" || config.tunnel_type == "udp") {
+        content.push_str("protocol = kcp\n");
+    }
+
+    content.push_str(&format!("user = {}\n", config.user_token));
+    content.push_str(&format!("token = {}\n", config.node_token));
+    content.push_str("\n");
+
+    // 隧道配置部分
+    content.push_str(&format!("[{}]\n", config.tunnel_name));
+    content.push_str(&format!("type = {}\n", config.tunnel_type));
+    content.push_str(&format!("local_ip = {}\n", config.local_ip));
+    content.push_str(&format!("local_port = {}\n", config.local_port));
+
+    // 根据隧道类型添加不同的配置
+    match config.tunnel_type.as_str() {
+        "tcp" | "udp" => {
+            if let Some(remote_port) = config.remote_port {
+                content.push_str(&format!("remote_port = {}\n", remote_port));
+            } else {
+                return Err("TCP/UDP 隧道缺少 remote_port 参数".to_string());
+            }
+        }
+        "http" | "https" => {
+            if let Some(ref custom_domains) = config.custom_domains {
+                content.push_str(&format!("custom_domains = {}\n", custom_domains));
+            } else {
+                return Err("HTTP/HTTPS 隧道缺少 custom_domains 参数".to_string());
+            }
+        }
+        _ => {
+            return Err(format!("不支持的隧道类型: {}", config.tunnel_type));
+        }
+    }
+
+    Ok(content)
 }

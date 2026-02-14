@@ -25,6 +25,8 @@ pub struct CustomTunnel {
     pub local_port: Option<u16>,
     pub remote_port: Option<u16>,
     pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hashed_id: Option<i32>,
 }
 
 /// 保存自定义隧道配置
@@ -65,10 +67,8 @@ pub async fn save_custom_tunnel(
 
         let parsed_info = parse_ini_config(&single_ini)?;
 
-        let config_file_name = format!("{}.ini", tunnel_name);
+        let config_file_name = format!("z_{}.ini", tunnel_name);
         let config_file_path = app_dir.join(&config_file_name);
-
-        eprintln!("[自定义隧道] 配置文件路径: {:?}", config_file_path);
 
         fs::write(&config_file_path, &single_ini)
             .map_err(|e| format!("写入配置文件失败: {}", e))?;
@@ -87,6 +87,7 @@ pub async fn save_custom_tunnel(
             local_port: parsed_info.local_port,
             remote_port: parsed_info.remote_port,
             created_at: chrono::Local::now().to_rfc3339(),
+            hashed_id: Some(string_to_i32(&format!("custom_{}", tunnel_name))),
         };
 
         save_custom_tunnel_list(&app_handle, &custom_tunnel)?;
@@ -137,6 +138,7 @@ pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<Cust
                 t.remote_port = parsed.remote_port.or(t.remote_port);
             }
         }
+        t.hashed_id = Some(string_to_i32(&format!("custom_{}", t.id)));
         updated.push(t);
     }
 
@@ -201,7 +203,7 @@ pub async fn get_custom_tunnel_config(
         .app_data_dir()
         .map_err(|e| format!("获取应用目录失败: {}", e))?;
 
-    let config_file_path = app_dir.join(format!("{}.ini", tunnel_id));
+    let config_file_path = app_dir.join(format!("z_{}.ini", tunnel_id));
 
     if !config_file_path.exists() {
         return Err("配置文件不存在".to_string());
@@ -227,7 +229,7 @@ pub async fn update_custom_tunnel(
     let parsed_info = parse_ini_config(&config_content)?;
 
     // 配置文件路径
-    let config_file_name = format!("{}.ini", tunnel_id);
+    let config_file_name = format!("z_{}.ini", tunnel_id);
     let config_file_path = app_dir.join(&config_file_name);
 
     // 写入新的配置内容
@@ -266,12 +268,12 @@ pub async fn update_custom_tunnel(
         local_port: parsed_info.local_port,
         remote_port: parsed_info.remote_port,
         created_at,
+        hashed_id: Some(string_to_i32(&format!("custom_{}", tunnel_id))),
     };
 
     // 保存到列表
     save_custom_tunnel_list(&app_handle, &updated_tunnel)?;
 
-    eprintln!("[自定义隧道] 更新成功: {}", tunnel_id);
     Ok(updated_tunnel)
 }
 
@@ -304,7 +306,7 @@ pub async fn delete_custom_tunnel(
         .map_err(|e| format!("获取应用目录失败: {}", e))?;
 
     // 删除配置文件
-    let config_file = app_dir.join(format!("{}.ini", tunnel_id));
+    let config_file = app_dir.join(format!("z_{}.ini", tunnel_id));
     if config_file.exists() {
         fs::remove_file(&config_file).map_err(|e| format!("删除配置文件失败: {}", e))?;
     }
@@ -326,7 +328,6 @@ pub async fn delete_custom_tunnel(
         fs::write(&list_file, content).map_err(|e| format!("保存自定义隧道列表失败: {}", e))?;
     }
 
-    eprintln!("[自定义隧道] 删除成功: {}", tunnel_id);
     Ok(())
 }
 
@@ -379,7 +380,7 @@ pub async fn start_custom_tunnel(
         }
     }
 
-    let config_file = format!("{}.ini", tunnel_id);
+    let config_file = format!("z_{}.ini", tunnel_id);
     let config_path = app_dir.join(&config_file);
 
     if !config_path.exists() {
@@ -405,12 +406,12 @@ pub async fn start_custom_tunnel(
     let pid = child.id();
 
     // 发送启动日志
-    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
     let _ = app_handle.emit(
         "frpc-log",
         LogMessage {
             tunnel_id: tunnel_id_hash,
-            message: format!("自定义隧道 {} 进程已启动 (PID: {})", tunnel_id, pid),
+            message: format!("[I] [ChmlFrpLauncher] 自定义隧道 {} 进程已启动 (PID: {})", tunnel_id, pid),
             timestamp,
         },
     );
@@ -424,7 +425,7 @@ pub async fn start_custom_tunnel(
                 let reader = BufReader::new(stdout);
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查日志是否需要停止守护
                     let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
@@ -460,7 +461,7 @@ pub async fn start_custom_tunnel(
                 let reader = BufReader::new(stderr);
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
-                    let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                     // 检查错误日志是否需要停止守护
                     let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();

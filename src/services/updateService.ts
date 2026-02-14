@@ -52,7 +52,6 @@ export class UpdateService {
 
       if (update?.available) {
         await update.downloadAndInstall((progressEvent: DownloadEvent) => {
-          console.log("更新进度:", progressEvent);
           if (onProgress && progressEvent.event === "Progress") {
             const data = progressEvent.data as {
               chunkLength?: number;

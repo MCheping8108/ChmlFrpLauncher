@@ -18,6 +18,8 @@ interface SystemSectionProps {
   guardEnabled: boolean;
   guardLoading: boolean;
   onToggleGuard: (enabled: boolean) => void;
+  restartOnEdit: boolean;
+  onToggleRestartOnEdit: (enabled: boolean) => void;
 }
 
 export function SystemSection({
@@ -31,6 +33,8 @@ export function SystemSection({
   guardEnabled,
   guardLoading,
   onToggleGuard,
+  restartOnEdit,
+  onToggleRestartOnEdit,
 }: SystemSectionProps) {
   return (
     <div className="space-y-3">
@@ -130,7 +134,7 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <Item variant="outline" className="border-0">
+        <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
           <ItemContent>
             <ItemTitle>进程守护</ItemTitle>
             <ItemDescription className="text-xs">
@@ -152,6 +156,33 @@ export function SystemSection({
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   guardEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </ItemActions>
+        </Item>
+
+        <Item variant="outline" className="border-0">
+          <ItemContent>
+            <ItemTitle>修改隧道后重启映射</ItemTitle>
+            <ItemDescription className="text-xs">
+              修改正在运行的隧道后自动重启以应用更改
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <button
+              onClick={() => onToggleRestartOnEdit(!restartOnEdit)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
+                restartOnEdit
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
+              } cursor-pointer`}
+              role="switch"
+              aria-checked={restartOnEdit}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
+                  restartOnEdit ? "translate-x-6" : "translate-x-1"
                 }`}
               />
             </button>

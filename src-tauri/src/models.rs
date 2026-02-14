@@ -65,7 +65,7 @@ impl FrpcProcesses {
 // 隧道类型
 #[derive(Clone, Debug)]
 pub enum TunnelType {
-    Api { user_token: String },
+    Api { config: TunnelConfig },
     Custom { original_id: String },
 }
 
@@ -110,3 +110,24 @@ pub struct HttpRequestOptions {
     pub body: Option<String>,
     pub bypass_proxy: Option<bool>,
 }
+
+// 隧道配置信息
+#[derive(Deserialize, Debug, Clone)]
+pub struct TunnelConfig {
+    pub tunnel_id: i32,
+    pub tunnel_name: String,
+    pub user_token: String,
+    pub server_addr: String,
+    pub server_port: u16,
+    pub node_token: String,
+    pub tunnel_type: String, // tcp, http, https
+    pub local_ip: String,
+    pub local_port: u16,
+    pub remote_port: Option<u16>, // tcp 类型使用
+    pub custom_domains: Option<String>, // http/https 类型使用
+    pub http_proxy: Option<String>, // 代理配置
+    pub tcp_mux: bool, // 多路复用
+    pub force_tls: bool, // 强制 TLS
+    pub kcp_optimization: bool, // KCP 优化
+}
+

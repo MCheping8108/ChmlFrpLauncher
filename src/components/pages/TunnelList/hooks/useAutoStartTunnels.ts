@@ -64,7 +64,6 @@ export function useAutoStartTunnels({
         const hasApiTunnels = autoStartList.some(([type]) => type === "api");
 
         if (hasApiTunnels && !user?.usertoken) {
-          console.log("[自动启动] 需要登录才能启动 API 隧道");
           hasAutoStartedRef.current = true;
           return;
         }
@@ -105,9 +104,6 @@ export function useAutoStartTunnels({
         }
 
         hasAutoStartedRef.current = true;
-        console.log(
-          `[自动启动] 已尝试启动 ${autoStartList.length} 个标记了自动启动的隧道`,
-        );
       } catch (error) {
         console.error("[自动启动] 启动隧道失败:", error);
         hasAutoStartedRef.current = true; // 即使出错也标记为已执行，避免重复尝试
