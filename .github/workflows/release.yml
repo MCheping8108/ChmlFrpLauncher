@@ -53,29 +53,8 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.6
 
       - name: Enable sccache
-        shell: bash
-        run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_DIR=$HOME/.cache/sccache" >> $GITHUB_ENV
-
-      - name: Cache sccache
-        if: runner.os != 'Windows'
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/sccache
-          key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-sccache-
-
-      - name: Cache sccache (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/cache@v4
-        with:
-          path: C:\Users\runneradmin\AppData\Local\Mozilla\sccache
-          key: windows-sccache-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            windows-sccache-
-
+        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+        
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-latest'
         run: |
