@@ -70,8 +70,6 @@ pub async fn save_custom_tunnel(
         let config_file_name = format!("z_{}.ini", tunnel_name);
         let config_file_path = app_dir.join(&config_file_name);
 
-        eprintln!("[自定义隧道] 配置文件路径: {:?}", config_file_path);
-
         fs::write(&config_file_path, &single_ini)
             .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
@@ -276,7 +274,6 @@ pub async fn update_custom_tunnel(
     // 保存到列表
     save_custom_tunnel_list(&app_handle, &updated_tunnel)?;
 
-    eprintln!("[自定义隧道] 更新成功: {}", tunnel_id);
     Ok(updated_tunnel)
 }
 
@@ -331,7 +328,6 @@ pub async fn delete_custom_tunnel(
         fs::write(&list_file, content).map_err(|e| format!("保存自定义隧道列表失败: {}", e))?;
     }
 
-    eprintln!("[自定义隧道] 删除成功: {}", tunnel_id);
     Ok(())
 }
 

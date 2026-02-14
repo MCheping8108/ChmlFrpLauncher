@@ -37,10 +37,6 @@ pub async fn start_frpc(
     let config_path = app_dir.join(format!("g_{}.ini", tunnel_id));
     let config_content = generate_frpc_config(&config)?;
 
-    // 打印配置文件内容用于调试
-    eprintln!("[调试] 生成的配置文件内容:\n{}", config_content);
-    eprintln!("[调试] 配置文件路径: {:?}", config_path);
-
     std::fs::write(&config_path, config_content)
         .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
@@ -402,6 +398,11 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
     // 连接池数量
     content.push_str("pool_count = 5\n");
 
+    // KCP 优化（在 pool_count 下方，仅对 TCP/UDP 隧道）
+    if config.kcp_optimization && (config.tunnel_type == "tcp" || config.tunnel_type == "udp") {
+        content.push_str("protocol = kcp\n");
+    }
+
     content.push_str(&format!("user = {}\n", config.user_token));
     content.push_str(&format!("token = {}\n", config.node_token));
     content.push_str("\n");
@@ -419,11 +420,6 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
                 content.push_str(&format!("remote_port = {}\n", remote_port));
             } else {
                 return Err("TCP/UDP 隧道缺少 remote_port 参数".to_string());
-            }
-
-            // KCP 优化（仅对 TCP/UDP 隧道）
-            if config.kcp_optimization {
-                content.push_str("protocol = kcp\n");
             }
         }
         "http" | "https" => {

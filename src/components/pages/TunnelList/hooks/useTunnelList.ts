@@ -90,11 +90,7 @@ export function useTunnelList() {
       const { listen } = await import("@tauri-apps/api/event");
       const unlisten = await listen<{ tunnel_id: number; timestamp: string }>(
         "tunnel-auto-restarted",
-        async (event) => {
-          console.log(
-            `[守护进程] 收到隧道 ${event.payload.tunnel_id} 自动重启通知，立即刷新状态`,
-          );
-
+        async () => {
           // 使用ref获取最新的tunnels
           const currentTunnels = tunnelsRef.current;
 

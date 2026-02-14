@@ -96,11 +96,6 @@ export function useTunnelProgress(
       }
 
       try {
-        console.log("调用下线隧道API", {
-          tunnelId,
-          tunnelName: cleanedTunnelName,
-        });
-
         await offlineTunnel(cleanedTunnelName, user.usertoken);
 
         await new Promise((resolve) => setTimeout(resolve, 8000));

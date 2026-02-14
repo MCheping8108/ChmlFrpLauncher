@@ -77,9 +77,6 @@ export class FrpcManager {
       kcp_optimization: kcpOptimization,
     };
 
-    console.log("[调试] 启动隧道配置:", config);
-    console.log("[调试] 原始隧道数据:", tunnel);
-
     return await invoke<string>("start_frpc", { config });
   }
 
