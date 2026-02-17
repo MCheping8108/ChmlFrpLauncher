@@ -1,14 +1,25 @@
 // 隐藏用户日志里面的token
-pub fn sanitize_log(message: &str, user_token: &str) -> String {
+pub fn sanitize_log(message: &str, secrets: &[&str]) -> String {
+    let mut result = message.to_string();
+    for secret in secrets {
+        if secret.is_empty() {
+            continue;
+        }
+        result = sanitize_token(&result, secret);
+    }
+    result
+}
+
+fn sanitize_token(message: &str, token: &str) -> String {
     let mut result = message.to_string();
 
-    result = result.replace(&format!("{}.", user_token), "");
-    result = result.replace(&format!("{}-", user_token), "");
-    result = result.replace(user_token, "");
+    result = result.replace(&format!("{}.", token), "");
+    result = result.replace(&format!("{}-", token), "");
+    result = result.replace(token, "");
 
-    if let Some(dot_pos) = user_token.find('.') {
-        let first_part = &user_token[..dot_pos];
-        let second_part = &user_token[dot_pos + 1..];
+    if let Some(dot_pos) = token.find('.') {
+        let first_part = &token[..dot_pos];
+        let second_part = &token[dot_pos + 1..];
 
         if first_part.len() >= 6 {
             result = result.replace(first_part, "***");
@@ -18,10 +29,10 @@ pub fn sanitize_log(message: &str, user_token: &str) -> String {
         }
     }
 
-    if user_token.len() >= 10 {
-        for window_size in (8..=user_token.len()).rev() {
-            if window_size <= user_token.len() {
-                let substr = &user_token[..window_size];
+    if token.len() >= 10 {
+        for window_size in (8..=token.len()).rev() {
+            if window_size <= token.len() {
+                let substr = &token[..window_size];
                 if result.contains(substr) && substr.len() >= 8 {
                     result = result.replace(substr, "***");
                 }

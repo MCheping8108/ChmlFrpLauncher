@@ -28,7 +28,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' asset: tauri: http://localhost:5173; script-src 'self' 'unsafe-eval' http://localhost:5173; style-src 'self' 'unsafe-inline' http://localhost:5173; img-src 'self' asset: tauri: data: blob: app: file:; media-src 'self' asset: tauri: data: blob: app: file:; font-src 'self' asset: tauri: data:; connect-src 'self' https://cf-v2.uapis.cn https://cf-v1.uapis.cn https://chmlfrp.net https://*.chmlfrp.net https://github.com http://localhost:5173 ws://localhost:5173;"
     },
     "withGlobalTauri": true
   },

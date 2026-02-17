@@ -13,6 +13,7 @@ fn spawn_log_reader(
     app_handle: tauri::AppHandle,
     tunnel_id: i32,
     user_token: String,
+    node_token: String,
     reader: impl std::io::Read + Send + 'static,
     is_stderr: bool,
 ) {
@@ -28,7 +29,8 @@ fn spawn_log_reader(
             let reader = BufReader::new(reader);
             for line in reader.lines().flatten() {
                 let clean_line = strip_ansi_escapes::strip_str(&line);
-                let sanitized_line = sanitize_log(&clean_line, &user_token);
+                let sanitized_line =
+                    sanitize_log(&clean_line, &[user_token.as_str(), node_token.as_str()]);
                 let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
 
                 let guard_state = app_handle.state::<ProcessGuardState>();
@@ -81,6 +83,7 @@ pub async fn start_frpc(
 ) -> Result<String, String> {
     let tunnel_id = config.tunnel_id;
     let user_token = config.user_token.clone();
+    let node_token = config.node_token.clone();
 
     {
         let procs = processes
@@ -102,6 +105,18 @@ pub async fn start_frpc(
 
     std::fs::write(&config_path, config_content)
         .map_err(|e| format!("写入配置文件失败: {}", e))?;
+
+    #[cfg(unix)]
+    {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&config_path)
+            .map_err(|e| format!("获取配置文件权限失败: {}", e))?
+            .permissions();
+        perms.set_mode(0o600);
+        fs::set_permissions(&config_path, perms)
+            .map_err(|e| format!("设置配置文件权限失败: {}", e))?;
+    }
 
     let frpc_path = if cfg!(target_os = "windows") {
         app_dir.join("frpc.exe")
@@ -159,13 +174,21 @@ pub async fn start_frpc(
             app_handle.clone(),
             tunnel_id,
             user_token.clone(),
+            node_token.clone(),
             stdout,
             false,
         );
     }
 
     if let Some(stderr) = child.stderr.take() {
-        spawn_log_reader(app_handle.clone(), tunnel_id, user_token, stderr, true);
+        spawn_log_reader(
+            app_handle.clone(),
+            tunnel_id,
+            user_token,
+            node_token,
+            stderr,
+            true,
+        );
     }
 
     {
