@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
-import type { Tunnel } from "./api";
+import { getNodeUdpSupport, type Tunnel } from "./api";
 
 export interface LogMessage {
   tunnel_id: number;
@@ -54,6 +54,13 @@ export class FrpcManager {
       }
     } catch (error) {
       console.error("解析代理配置失败:", error);
+    }
+
+    if (kcpOptimization) {
+      const udpSupport = await getNodeUdpSupport(tunnel.node, userToken);
+      if (udpSupport !== true) {
+        kcpOptimization = false;
+      }
     }
 
     const config: TunnelConfig = {

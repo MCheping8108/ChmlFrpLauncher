@@ -568,7 +568,7 @@ export function useTunnelProgress(
                   if (link && fallbackLink && link !== fallbackLink) {
                     logStore.addLog({
                       tunnel_id: tunnelId,
-                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"访问（推荐）。如果无法访问，可以尝试使用"${fallbackLink}"链接。`,
+                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"访问（推荐）。如果无法访问，可以尝试使用"${fallbackLink}"连接。`,
                       timestamp,
                     });
                   } else if (link) {
