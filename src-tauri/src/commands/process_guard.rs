@@ -4,7 +4,6 @@ use std::thread;
 use std::time::Duration;
 use tauri::{Emitter, Manager, State};
 
-/// 停止守护的错误模式配置
 const STOP_GUARD_PATTERNS: &[&str] = &[
     "token in login doesn't match token from configuration",
     "authorization failed",
@@ -18,6 +17,10 @@ const STOP_GUARD_PATTERNS: &[&str] = &[
     "客户端代理参数错误，配置文件与记录不匹配。请不要随意修改配置文件！",
     "ChmlFrp API Error"
 ];
+
+fn get_timestamp() -> String {
+    chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string()
+}
 
 #[tauri::command]
 pub async fn set_process_guard_enabled(
@@ -130,17 +133,14 @@ pub async fn remove_guarded_process(
     Ok(())
 }
 
-/// 检查日志消息是否包含需要停止守护的错误模式
 pub fn should_stop_guard_by_log(message: &str) -> Option<&'static str> {
-    for pattern in STOP_GUARD_PATTERNS {
-        if message.to_lowercase().contains(&pattern.to_lowercase()) {
-            return Some(pattern);
-        }
-    }
-    None
+    let message_lower = message.to_lowercase();
+    STOP_GUARD_PATTERNS
+        .iter()
+        .find(|p| message_lower.contains(&p.to_lowercase()))
+        .copied()
 }
 
-/// 处理日志并检查是否需要停止守护
 #[tauri::command]
 pub async fn check_log_and_stop_guard(
     app_handle: tauri::AppHandle,
@@ -148,58 +148,136 @@ pub async fn check_log_and_stop_guard(
     log_message: String,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<(), String> {
-    if let Some(pattern) = should_stop_guard_by_log(&log_message) {
-        eprintln!("[守护进程] 检测到隧道 {} 出现错误: {}", tunnel_id, pattern);
-        eprintln!("[守护进程] 停止对隧道 {} 的守护", tunnel_id);
+    let Some(pattern) = should_stop_guard_by_log(&log_message) else {
+        return Ok(());
+    };
 
-        // 从守护列表中移除（不标记为手动停止，因为这是自动停止）
+    eprintln!("[守护进程] 检测到隧道 {} 出现错误: {}", tunnel_id, pattern);
+    eprintln!("[守护进程] 停止对隧道 {} 的守护", tunnel_id);
+
+    {
         let mut guarded = guard_state
             .guarded_processes
             .lock()
             .map_err(|e| format!("获取守护进程锁失败: {}", e))?;
-
         guarded.remove(&tunnel_id);
-
-        // 发送日志消息通知用户
-        let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
-        let _ = app_handle.emit(
-            "frpc-log",
-            LogMessage {
-                tunnel_id,
-                message: format!("[W] [ChmlFrpLauncher] 检测到错误 \"{}\"，已停止守护进程", pattern),
-                timestamp,
-            },
-        );
     }
+
+    let _ = app_handle.emit(
+        "frpc-log",
+        LogMessage {
+            tunnel_id,
+            message: format!("[W] [ChmlFrpLauncher] 检测到错误 \"{}\"，已停止守护进程", pattern),
+            timestamp: get_timestamp(),
+        },
+    );
 
     Ok(())
 }
 
+fn is_tunnel_running(processes: &State<'_, FrpcProcesses>, tunnel_id: i32) -> bool {
+    let Ok(mut procs) = processes.processes.lock() else {
+        return false;
+    };
+
+    let Some(child) = procs.get_mut(&tunnel_id) else {
+        return false;
+    };
+
+    match child.try_wait() {
+        Ok(None) => true,
+        Ok(Some(_)) | Err(_) => {
+            procs.remove(&tunnel_id);
+            false
+        }
+    }
+}
+
+fn is_manually_stopped(guard_state: &State<'_, ProcessGuardState>, tunnel_id: i32) -> bool {
+    guard_state
+        .manually_stopped
+        .lock()
+        .ok()
+        .map(|s| s.contains(&tunnel_id))
+        .unwrap_or(true)
+}
+
+fn restart_tunnel(app_handle: tauri::AppHandle, info: ProcessGuardInfo) {
+    thread::spawn(move || {
+        thread::sleep(Duration::from_secs(1));
+
+        let processes_state = app_handle.state::<FrpcProcesses>();
+        let guard_state_state = app_handle.state::<ProcessGuardState>();
+        let tunnel_id = info.tunnel_id;
+
+        let result = match info.tunnel_type {
+            TunnelType::Api { config } => {
+                tauri::async_runtime::block_on(async {
+                    crate::commands::process::start_frpc(
+                        app_handle.clone(),
+                        config,
+                        processes_state,
+                        guard_state_state,
+                    )
+                    .await
+                })
+            }
+            TunnelType::Custom { original_id } => {
+                tauri::async_runtime::block_on(async {
+                    crate::commands::custom_tunnel::start_custom_tunnel(
+                        app_handle.clone(),
+                        original_id,
+                        processes_state,
+                        guard_state_state,
+                    )
+                    .await
+                })
+            }
+        };
+
+        match result {
+            Ok(_) => {
+                let _ = app_handle.emit(
+                    "tunnel-auto-restarted",
+                    serde_json::json!({
+                        "tunnel_id": tunnel_id,
+                        "timestamp": get_timestamp(),
+                    }),
+                );
+            }
+            Err(e) => {
+                let _ = app_handle.emit(
+                    "frpc-log",
+                    LogMessage {
+                        tunnel_id,
+                        message: format!("[E] [ChmlFrpLauncher] 守护进程重启失败: {}", e),
+                        timestamp: get_timestamp(),
+                    },
+                );
+
+                if let Ok(mut guarded) = app_handle.state::<ProcessGuardState>().guarded_processes.lock() {
+                    guarded.remove(&tunnel_id);
+                }
+            }
+        }
+    });
+}
+
 pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
     thread::spawn(move || {
-        let mut last_log_time = std::time::Instant::now();
-
         loop {
             thread::sleep(Duration::from_secs(3));
 
             let guard_state = app_handle.state::<ProcessGuardState>();
             let processes = app_handle.state::<FrpcProcesses>();
 
-            let is_enabled = guard_state.enabled.load(Ordering::SeqCst);
-
-            if last_log_time.elapsed().as_secs() >= 30 {
-                last_log_time = std::time::Instant::now();
-            }
-
-            if !is_enabled {
+            if !guard_state.enabled.load(Ordering::SeqCst) {
                 continue;
             }
 
-            let guarded_list: Vec<ProcessGuardInfo> = {
-                match guard_state.guarded_processes.lock() {
-                    Ok(guarded) => guarded.values().cloned().collect(),
-                    Err(_) => continue,
-                }
+            let guarded_list: Vec<ProcessGuardInfo> = match guard_state.guarded_processes.lock() {
+                Ok(guarded) => guarded.values().cloned().collect(),
+                Err(_) => continue,
             };
 
             if guarded_list.is_empty() {
@@ -209,116 +287,24 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
             for info in guarded_list {
                 let tunnel_id = info.tunnel_id;
 
-                let is_manually_stopped = {
-                    match guard_state.manually_stopped.lock() {
-                        Ok(stopped) => stopped.contains(&tunnel_id),
-                        Err(_) => continue,
-                    }
-                };
-
-                if is_manually_stopped {
+                if is_manually_stopped(&guard_state, tunnel_id) {
                     continue;
                 }
 
-                let is_running = {
-                    match processes.processes.lock() {
-                        Ok(mut procs) => {
-                            if let Some(child) = procs.get_mut(&tunnel_id) {
-                                match child.try_wait() {
-                                    Ok(Some(_)) => {
-                                        procs.remove(&tunnel_id);
-                                        false
-                                    }
-                                    Ok(None) => true,
-                                    Err(_) => {
-                                        procs.remove(&tunnel_id);
-                                        false
-                                    }
-                                }
-                            } else {
-                                false
-                            }
-                        }
-                        Err(_) => continue,
-                    }
-                };
-
-                if !is_running {
-                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
-                    let _ = app_handle.emit(
-                        "frpc-log",
-                        LogMessage {
-                            tunnel_id,
-                            message: "[W] [ChmlFrpLauncher] 检测到进程离线，触发守护进程，自动重启中".to_string(),
-                            timestamp,
-                        },
-                    );
-
-                    let app_clone = app_handle.clone();
-                    let tunnel_type = info.tunnel_type.clone();
-
-                    thread::spawn(move || {
-                        thread::sleep(Duration::from_secs(1));
-
-                        let processes_state = app_clone.state::<FrpcProcesses>();
-                        let guard_state_state = app_clone.state::<ProcessGuardState>();
-
-                        let result = match tunnel_type {
-                            TunnelType::Api { config } => {
-                                tauri::async_runtime::block_on(async {
-                                    crate::commands::process::start_frpc(
-                                        app_clone.clone(),
-                                        config.clone(),
-                                        processes_state,
-                                        guard_state_state,
-                                    )
-                                    .await
-                                })
-                            }
-                            TunnelType::Custom { original_id } => {
-                                tauri::async_runtime::block_on(async {
-                                    crate::commands::custom_tunnel::start_custom_tunnel(
-                                        app_clone.clone(),
-                                        original_id.clone(),
-                                        processes_state,
-                                        guard_state_state,
-                                    )
-                                    .await
-                                })
-                            }
-                        };
-
-                        match result {
-                            Ok(_) => {
-                                let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
-                                let _ = app_clone.emit(
-                                    "tunnel-auto-restarted",
-                                    serde_json::json!({
-                                        "tunnel_id": tunnel_id,
-                                        "timestamp": timestamp,
-                                    }),
-                                );
-                            }
-                            Err(e) => {
-                                let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
-                                let _ = app_clone.emit(
-                                    "frpc-log",
-                                    LogMessage {
-                                        tunnel_id,
-                                        message: format!("[E] [ChmlFrpLauncher] 守护进程重启失败: {}", e),
-                                        timestamp,
-                                    },
-                                );
-
-                                let guard_state_final = app_clone.state::<ProcessGuardState>();
-                                if let Ok(mut guarded) = guard_state_final.guarded_processes.lock()
-                                {
-                                    guarded.remove(&tunnel_id);
-                                };
-                            }
-                        }
-                    });
+                if is_tunnel_running(&processes, tunnel_id) {
+                    continue;
                 }
+
+                let _ = app_handle.emit(
+                    "frpc-log",
+                    LogMessage {
+                        tunnel_id,
+                        message: "[W] [ChmlFrpLauncher] 检测到进程离线，触发守护进程，自动重启中".to_string(),
+                        timestamp: get_timestamp(),
+                    },
+                );
+
+                restart_tunnel(app_handle.clone(), info);
             }
         }
     });
