@@ -95,7 +95,6 @@ export function Logs() {
     }
   }, [logs, autoScroll]);
 
-  // 清空日志
   const handleClearLogs = () => {
     logStore.clearLogs();
     toast.success("日志已清空");

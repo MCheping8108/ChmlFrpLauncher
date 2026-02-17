@@ -225,7 +225,6 @@ pub fn run() {
             commands::stop_frpc,
             commands::is_frpc_running,
             commands::get_running_tunnels,
-            commands::test_log_event,
             commands::is_autostart_enabled,
             commands::set_autostart,
             commands::get_auto_start_tunnels,

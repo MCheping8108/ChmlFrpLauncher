@@ -5,7 +5,6 @@ export function useAnimatedNumber(
   duration: number = 500,
   shouldAnimate: boolean = true,
 ) {
-  // 初始值设为实际值，如果不需要动画则直接显示
   const [displayValue, setDisplayValue] = useState(value);
   const [isAnimating, setIsAnimating] = useState(false);
   const startTimeRef = useRef<number | null>(null);
@@ -16,13 +15,11 @@ export function useAnimatedNumber(
   const displayValueRef = useRef(value);
   const hasAnimatedRef = useRef(false);
 
-  // 同步 displayValueRef
   useEffect(() => {
     displayValueRef.current = displayValue;
   }, [displayValue]);
 
   useEffect(() => {
-    // 如果值没有变化且 shouldAnimate 也没有变化，不需要动画
     if (
       value === previousValueRef.current &&
       previousShouldAnimateRef.current === shouldAnimate
@@ -34,15 +31,12 @@ export function useAnimatedNumber(
     previousValueRef.current = value;
     previousShouldAnimateRef.current = shouldAnimate;
 
-    // 取消之前的动画
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
 
-    // 如果不应该动画，直接更新值
     if (!shouldAnimate) {
-      // 使用 setTimeout 避免同步 setState
       setTimeout(() => {
         setDisplayValue(value);
         displayValueRef.current = value;
@@ -51,11 +45,9 @@ export function useAnimatedNumber(
       return;
     }
 
-    // 如果 shouldAnimate 从 false 变为 true，从 0 开始动画
     if (!wasAnimating && shouldAnimate && !hasAnimatedRef.current) {
       startValueRef.current = 0;
       displayValueRef.current = 0;
-      // 使用 setTimeout 避免同步 setState
       setTimeout(() => {
         setDisplayValue(0);
       }, 0);
@@ -64,7 +56,6 @@ export function useAnimatedNumber(
       startValueRef.current = displayValueRef.current;
     }
 
-    // 使用 requestAnimationFrame 延迟状态更新，避免同步 setState
     const startAnimation = () => {
       setIsAnimating(true);
       const startTime = performance.now();
@@ -76,7 +67,6 @@ export function useAnimatedNumber(
         const elapsed = currentTime - startTimeRef.current;
         const progress = Math.min(elapsed / duration, 1);
 
-        // 使用缓动函数
         const easeOutCubic = 1 - Math.pow(1 - progress, 3);
         const currentValue = Math.floor(
           startValueRef.current +
@@ -99,7 +89,6 @@ export function useAnimatedNumber(
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 
-    // 延迟启动动画，避免在 effect 中同步调用 setState
     const timeoutId = setTimeout(() => {
       requestAnimationFrame(startAnimation);
     }, 0);
@@ -113,7 +102,6 @@ export function useAnimatedNumber(
     };
   }, [value, duration, shouldAnimate]);
 
-  // 当 shouldAnimate 变为 false 时，重置 hasAnimatedRef
   useEffect(() => {
     if (!shouldAnimate) {
       hasAnimatedRef.current = false;
