@@ -1,5 +1,6 @@
 import { check, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
+import { flushSync } from "react-dom";
 
 export interface UpdateInfo {
   version: string;
@@ -51,21 +52,19 @@ export class UpdateService {
       });
 
       if (update?.available) {
+        let contentLength = 0;
+        let downloadedBytes = 0;
+
         await update.downloadAndInstall((progressEvent: DownloadEvent) => {
-          if (onProgress && progressEvent.event === "Progress") {
-            const data = progressEvent.data as {
-              chunkLength?: number;
-              contentLength?: number;
-              downloadedBytes?: number;
-            };
-            if (data.contentLength && data.downloadedBytes !== undefined) {
-              const percentage =
-                (data.downloadedBytes / data.contentLength) * 100;
-              onProgress(percentage);
-            } else if (data.chunkLength && data.contentLength) {
-              // 备用方案：使用 chunkLength 估算进度
-              const percentage = (data.chunkLength / data.contentLength) * 100;
-              onProgress(Math.min(percentage, 100));
+          if (progressEvent.event === "Started") {
+            contentLength = progressEvent.data.contentLength || 0;
+          } else if (progressEvent.event === "Progress" && onProgress) {
+            downloadedBytes += progressEvent.data.chunkLength;
+            if (contentLength > 0) {
+              const percentage = (downloadedBytes / contentLength) * 100;
+              flushSync(() => {
+                onProgress(Math.min(percentage, 100));
+              });
             }
           }
         });

@@ -134,103 +134,98 @@ export function UpdateDialog({
         className="max-w-xl max-h-[85vh] p-0 overflow-hidden"
         showCloseButton={!isDownloading}
       >
-        <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background border-b border-border/50">
-          <DialogHeader className="relative p-6 pb-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <DialogTitle className="flex items-center gap-3 text-xl mb-3">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  <span>发现新版本</span>
-                </DialogTitle>
-                <DialogDescription className="space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge
-                      variant="secondary"
-                      className="text-xs font-medium px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
-                    >
-                      v{version}
-                    </Badge>
-                    {date && (
-                      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>
-                          {new Date(date).toLocaleDateString("zh-CN", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </DialogDescription>
+        <div className="flex flex-col h-full max-h-[85vh]">
+          <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background border-b border-border/50 flex-shrink-0">
+            <DialogHeader className="relative p-6 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <DialogTitle className="flex items-center gap-3 text-xl mb-3">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <span>发现新版本</span>
+                  </DialogTitle>
+                  <DialogDescription className="space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-medium px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
+                      >
+                        v{version}
+                      </Badge>
+                      {date && (
+                        <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>
+                            {new Date(date).toLocaleDateString("zh-CN", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </DialogDescription>
+                </div>
               </div>
-            </div>
-          </DialogHeader>
-        </div>
-
-        {markdownContent && (
-          <div className="px-6 py-4">
-            <ScrollArea className="max-h-[350px] pr-4 overflow-auto">
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none update-content"
-                dangerouslySetInnerHTML={{ __html: markdownContent }}
-              />
-            </ScrollArea>
+            </DialogHeader>
           </div>
-        )}
 
-        {isDownloading && (
-          <div className="px-6 py-4 border-t border-border/50 bg-muted/30">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-foreground font-medium">
-                    正在下载更新...
+          {markdownContent && (
+            <div className="px-6 py-4 flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-full pr-4">
+                <div
+                  className="prose prose-sm dark:prose-invert max-w-none update-content"
+                  dangerouslySetInnerHTML={{ __html: markdownContent }}
+                />
+              </ScrollArea>
+            </div>
+          )}
+
+          {isDownloading && (
+            <div className="px-6 py-4 border-t border-border/50 bg-muted/30 flex-shrink-0">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-foreground font-medium">
+                      正在下载更新...
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground font-mono">
+                    {downloadProgress.toFixed(0)}%
                   </span>
                 </div>
-                <span className="text-muted-foreground font-mono">
-                  {downloadProgress.toFixed(0)}%
-                </span>
-              </div>
-              <div className="w-full bg-muted/50 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-primary to-primary/80 h-full rounded-full transition-all duration-300 ease-out shadow-sm"
-                  style={{ width: `${downloadProgress}%` }}
-                />
+                <div className="w-full bg-muted/50 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-primary to-primary/80 h-full rounded-full shadow-sm"
+                    style={{ width: `${downloadProgress}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-muted/20 z-10 flex items-center justify-between gap-3">
-          {!isDownloading ? (
+          <DialogFooter className="px-6 py-4 border-t border-border/50 bg-muted/20 z-10 flex items-center justify-between gap-3 flex-shrink-0">
             <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-auto">
               <Button
                 variant="outline"
                 onClick={onClose}
+                disabled={isDownloading}
                 className="flex items-center gap-2 flex-1 sm:flex-initial"
               >
                 下次再说
               </Button>
               <Button
                 onClick={onUpdate}
+                disabled={isDownloading}
                 className="flex items-center gap-2 flex-1 sm:flex-initial bg-primary hover:bg-primary/90 shadow-sm"
               >
                 <Download className="w-4 h-4" />
                 立即更新
               </Button>
             </div>
-          ) : (
-            <div className="w-full flex items-center justify-center">
-              <Button variant="outline" disabled className="gap-2">
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                下载中...
-              </Button>
-            </div>
-          )}
-        </DialogFooter>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

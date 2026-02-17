@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TitleBar } from "@/components/TitleBar";
 import { Home } from "@/components/pages/Home";
@@ -33,13 +33,13 @@ function App() {
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
   // Hooks
-  useAppTheme(); // Manages theme in DOM
+  useAppTheme();
   const { showCloseConfirmDialog, setShowCloseConfirmDialog } =
     useWindowEvents();
   const { showTitleBar } = useTitleBar();
 
   const SIDEBAR_LEFT = isMacOS && !showTitleBar ? 10 : 15; // px
-  const SIDEBAR_COLLAPSED_WIDTH = Math.round(((20 * 5) / 3) * 2); // ~66 px (double the previous collapsed width)
+  const SIDEBAR_COLLAPSED_WIDTH = Math.round(((20 * 5) / 3) * 2);
   const appContainerRef = useRef<HTMLDivElement>(null);
   const {
     backgroundImage,
@@ -79,7 +79,7 @@ function App() {
     setActiveTab(tab);
   };
 
-  const renderContent = () => {
+  const content = useMemo(() => {
     switch (activeTab) {
       case "home":
         return <Home user={user} onUserChange={setUser} />;
@@ -92,20 +92,16 @@ function App() {
       default:
         return <Home user={user} onUserChange={setUser} />;
     }
-  };
+  }, [activeTab, user]);
 
-  const backgroundStyle = useCallback(() => {
+  const backgroundStyle = useMemo(() => {
     if (!backgroundImage) {
-      return {
-        backgroundColor: getBackgroundColorWithOpacity(100),
-      };
+      return { backgroundColor: getBackgroundColorWithOpacity(100) };
     }
     return {};
   }, [backgroundImage, getBackgroundColorWithOpacity]);
 
-  const handleVideoError = useCallback(() => {
-    // Video error is handled in useBackground hook
-  }, []);
+  const handleVideoError = () => {};
 
   const handleVideoLoadedData = useCallback(() => {
     if (videoRef.current) {
@@ -158,7 +154,7 @@ function App() {
             : ""
         }`}
         style={{
-          ...backgroundStyle(),
+          ...backgroundStyle,
           borderRadius: "0",
           overflow: "hidden",
           position: "relative",
@@ -166,7 +162,7 @@ function App() {
       >
         <BackgroundLayer
           backgroundImage={backgroundImage}
-          backgroundType={backgroundType as "image" | "video" | null}
+          backgroundType={backgroundType}
           videoSrc={videoSrc}
           videoLoadError={videoLoadError}
           videoRef={videoRef}
@@ -229,7 +225,7 @@ function App() {
               ) : null}
               <div className="h-full overflow-auto px-6 pt-4 pb-6 md:px-8 md:pt-6 md:pb-8">
                 <div className="max-w-6xl mx-auto w-full h-full">
-                  <div className="h-full flex flex-col">{renderContent()}</div>
+                  <div className="h-full flex flex-col">{content}</div>
                 </div>
               </div>
             </div>
@@ -255,7 +251,7 @@ function App() {
                 className={`flex-1 overflow-auto px-6 pb-6 md:px-8 md:pb-8 ${!isMacOS || showTitleBar ? "pt-4 md:pt-6" : "pt-0"}`}
               >
                 <div className="max-w-6xl mx-auto w-full h-full">
-                  <div className="h-full flex flex-col">{renderContent()}</div>
+                  <div className="h-full flex flex-col">{content}</div>
                 </div>
               </div>
             </div>
