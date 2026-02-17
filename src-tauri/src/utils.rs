@@ -2,7 +2,9 @@
 pub fn sanitize_log(message: &str, user_token: &str) -> String {
     let mut result = message.to_string();
 
-    result = result.replace(user_token, "***TOKEN***");
+    result = result.replace(&format!("{}.", user_token), "");
+    result = result.replace(&format!("{}-", user_token), "");
+    result = result.replace(user_token, "");
 
     if let Some(dot_pos) = user_token.find('.') {
         let first_part = &user_token[..dot_pos];
