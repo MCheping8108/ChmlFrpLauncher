@@ -552,39 +552,45 @@ export function useTunnelProgress(
                   });
                 }
               } else {
-                const link = tunnel.ip && tunnel.dorp ? `${tunnel.ip}:${tunnel.dorp}` : "";
                 const remotePort = tunnel.dorp || "";
-                
-                (async () => {
-                  let fallbackLink = "";
-                  
-                  if (tunnel.ip) {
-                    const resolvedIp = await frpcManager.resolveDomainToIp(tunnel.ip);
-                    if (resolvedIp && remotePort) {
-                      fallbackLink = `${resolvedIp}:${remotePort}`;
-                    }
-                  }
-                  
-                  if (link && fallbackLink && link !== fallbackLink) {
-                    logStore.addLog({
-                      tunnel_id: tunnelId,
-                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"访问（推荐）。如果无法访问，可以尝试使用"${fallbackLink}"连接。`,
-                      timestamp,
-                    });
-                  } else if (link) {
-                    logStore.addLog({
-                      tunnel_id: tunnelId,
-                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"链接。`,
-                      timestamp,
-                    });
-                  } else {
-                    logStore.addLog({
-                      tunnel_id: tunnelId,
-                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功。`,
-                      timestamp,
-                    });
-                  }
-                })();
+                const primaryLink =
+                  tunnel.ip && remotePort ? `${tunnel.ip}:${remotePort}` : "";
+                const fallbackLink =
+                  tunnel.node_ip && remotePort
+                    ? `${tunnel.node_ip}:${remotePort}`
+                    : "";
+                const ipv6Link =
+                  tunnel.node_ipv6 && remotePort
+                    ? `[${tunnel.node_ipv6}]:${remotePort}`
+                    : "";
+
+                let messageText = `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功`;
+
+                if (primaryLink) {
+                  messageText += `，您可以通过"${primaryLink}"访问（推荐）`;
+                } else if (fallbackLink) {
+                  messageText += `，您可以通过"${fallbackLink}"访问`;
+                }
+
+                if (fallbackLink && primaryLink && fallbackLink !== primaryLink) {
+                  messageText += `。如果无法访问，可以尝试使用"${fallbackLink}"连接`;
+                }
+
+                if (
+                  ipv6Link &&
+                  ipv6Link !== primaryLink &&
+                  ipv6Link !== fallbackLink
+                ) {
+                  messageText += `。若支持IPV6，也可使用"${ipv6Link}"连接`;
+                }
+
+                messageText += "。";
+
+                logStore.addLog({
+                  tunnel_id: tunnelId,
+                  message: messageText,
+                  timestamp,
+                });
               }
             }
             

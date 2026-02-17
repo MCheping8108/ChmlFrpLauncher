@@ -63,11 +63,22 @@ export class FrpcManager {
       }
     }
 
+    const ipv6OnlyNetwork =
+      typeof window !== "undefined" &&
+      localStorage.getItem("ipv6OnlyNetwork") === "true";
+    const serverAddr = ipv6OnlyNetwork
+      ? tunnel.node_ipv6 || ""
+      : tunnel.node_ip;
+
+    if (ipv6OnlyNetwork && !tunnel.node_ipv6) {
+      throw new Error("此节点无IPV6，您的网络仅支持IPV6");
+    }
+
     const config: TunnelConfig = {
       tunnel_id: tunnel.id,
       tunnel_name: tunnel.name,
       user_token: userToken,
-      server_addr: tunnel.node_ip,
+      server_addr: serverAddr,
       server_port: tunnel.server_port,
       node_token: tunnel.node_token,
       tunnel_type: tunnel.type,

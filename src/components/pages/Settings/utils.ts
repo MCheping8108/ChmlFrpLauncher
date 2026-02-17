@@ -45,6 +45,13 @@ export const getInitialBypassProxy = (): boolean => {
   return stored !== "false";
 };
 
+export const getInitialIpv6OnlyNetwork = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("ipv6OnlyNetwork");
+  if (stored === null) return false;
+  return stored === "true";
+};
+
 export const getInitialShowTitleBar = (): boolean => {
   if (typeof window === "undefined") return false;
   const stored = localStorage.getItem("showTitleBar");

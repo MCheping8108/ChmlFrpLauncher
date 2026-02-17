@@ -20,6 +20,8 @@ import type { ProxyConfig } from "../hooks/useProxy";
 interface NetworkSectionProps {
   bypassProxy: boolean;
   setBypassProxy: (value: boolean) => void;
+  ipv6OnlyNetwork: boolean;
+  setIpv6OnlyNetwork: (value: boolean) => void;
   proxyConfig: ProxyConfig;
   updateProxyConfig: (updates: Partial<ProxyConfig>) => void;
 }
@@ -27,6 +29,8 @@ interface NetworkSectionProps {
 export function NetworkSection({
   bypassProxy,
   setBypassProxy,
+  ipv6OnlyNetwork,
+  setIpv6OnlyNetwork,
   proxyConfig,
   updateProxyConfig,
 }: NetworkSectionProps) {
@@ -58,6 +62,35 @@ export function NetworkSection({
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   bypassProxy ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </ItemActions>
+        </Item>
+
+        <div className="border-t border-border/50" />
+
+        <Item variant="outline" className="border-0">
+          <ItemContent>
+            <ItemTitle>仅存在IPV6网络</ItemTitle>
+            <ItemDescription className="text-xs">
+              仅 IPV6 环境时启用，自动限制为支持 IPV6 的节点
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <button
+              onClick={() => setIpv6OnlyNetwork(!ipv6OnlyNetwork)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
+                ipv6OnlyNetwork
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
+              } cursor-pointer`}
+              role="switch"
+              aria-checked={ipv6OnlyNetwork}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
+                  ipv6OnlyNetwork ? "translate-x-6" : "translate-x-1"
                 }`}
               />
             </button>

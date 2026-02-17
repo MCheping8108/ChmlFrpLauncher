@@ -44,6 +44,16 @@ export function useTunnelToggle({
       }
     }
 
+    if (
+      enabled &&
+      tunnel.type === "api" &&
+      localStorage.getItem("ipv6OnlyNetwork") === "true" &&
+      !tunnel.data.node_ipv6
+    ) {
+      toast.error("此节点无IPV6，您的网络仅支持IPV6");
+      return;
+    }
+
     if (togglingTunnels.has(tunnelKey)) {
       return;
     }

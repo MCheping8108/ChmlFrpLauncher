@@ -20,7 +20,34 @@ export function useAppInitialization() {
       }
     };
 
+    const initIpv6OnlyNetwork = async () => {
+      if (typeof window === "undefined") return;
+      if (localStorage.getItem("ipv6OnlyNetwork") !== null) return;
+      if (!("__TAURI__" in window)) {
+        localStorage.setItem("ipv6OnlyNetwork", "false");
+        window.dispatchEvent(new Event("ipv6OnlyNetworkChanged"));
+        return;
+      }
+
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        const ipv4Result = await invoke<{ success: boolean }>("ping_host", {
+          host: "1.1.1.1",
+        });
+        const ipv6Result = await invoke<{ success: boolean }>("ping_host", {
+          host: "2606:4700:4700::1111",
+        });
+        const ipv6Only = ipv6Result.success && !ipv4Result.success;
+        localStorage.setItem("ipv6OnlyNetwork", ipv6Only ? "true" : "false");
+        window.dispatchEvent(new Event("ipv6OnlyNetworkChanged"));
+      } catch {
+        localStorage.setItem("ipv6OnlyNetwork", "false");
+        window.dispatchEvent(new Event("ipv6OnlyNetworkChanged"));
+      }
+    };
+
     initProcessGuard();
+    initIpv6OnlyNetwork();
   }, []);
 
   useEffect(() => {

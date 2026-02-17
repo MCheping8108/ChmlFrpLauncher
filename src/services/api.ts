@@ -49,6 +49,7 @@ export interface Tunnel {
   nodestate: string;
   ip: string;
   node_ip: string;
+  node_ipv6: string | null;
   server_port: number;
   node_token: string;
 }
