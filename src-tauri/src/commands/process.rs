@@ -392,8 +392,8 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
     // TLS 配置
     content.push_str(&format!("tls_enable = {}\n", config.force_tls));
 
-    // 多路复用配置
-    content.push_str(&format!("tcp_mux = {}\n", config.tcp_mux));
+    // 多路复用配置（强制开启）
+    content.push_str("tcp_mux = true\n");
 
     // 连接池数量
     content.push_str("pool_count = 5\n");

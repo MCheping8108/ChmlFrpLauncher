@@ -7,7 +7,6 @@ export interface ProxyConfig {
   port: string;
   username: string;
   password: string;
-  tcpMux: boolean;
   forceTls: boolean;
   kcpOptimization: boolean;
 }
@@ -19,7 +18,6 @@ const DEFAULT_PROXY_CONFIG: ProxyConfig = {
   port: "",
   username: "",
   password: "",
-  tcpMux: true,
   forceTls: false,
   kcpOptimization: false,
 };

@@ -187,37 +187,6 @@ export function NetworkSection({
 
         <Item variant="outline" className="border-0">
           <ItemContent>
-            <ItemTitle>多路复用</ItemTitle>
-            <ItemDescription className="text-xs">
-              启用 TCP 多路复用，提升连接性能
-            </ItemDescription>
-          </ItemContent>
-          <ItemActions>
-            <button
-              onClick={() =>
-                updateProxyConfig({ tcpMux: !proxyConfig.tcpMux })
-              }
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                proxyConfig.tcpMux
-                  ? "bg-foreground"
-                  : "bg-muted dark:bg-foreground/12"
-              } cursor-pointer`}
-              role="switch"
-              aria-checked={proxyConfig.tcpMux}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
-                  proxyConfig.tcpMux ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-          </ItemActions>
-        </Item>
-
-        <div className="border-t border-border/50" />
-
-        <Item variant="outline" className="border-0">
-          <ItemContent>
             <ItemTitle className="flex items-center gap-1.5">
               强制 TLS
                 <Tooltip>
