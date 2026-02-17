@@ -381,7 +381,7 @@ export function useTunnelProgress(
         });
       }
     },
-    [fixingTlsTunnels, setRunningTunnels],
+    [fixingTlsTunnels, setRunningTunnels, tunnels],
   );
 
   useEffect(() => {
