@@ -1,34 +1,129 @@
 use crate::models::{DownloadInfo, DownloadProgress, FrpcDownload, FrpcInfoResponse};
 use futures_util::StreamExt;
 use sha2::{Digest, Sha256};
-use std::fs;
-use std::io::Read;
+use std::fs::OpenOptions;
+use std::io::{Read, Write};
+use std::path::Path;
 use tauri::{Emitter, Manager};
 
-// 从 API 获取下载信息
-pub async fn get_download_info() -> Result<DownloadInfo, String> {
-    let api_url = "https://cf-v1.uapis.cn/download/frpc/frpc_info.json";
+const MAX_RETRIES: u32 = 5;
+const CHUNK_SIZE: u64 = 1024 * 1024;
+const PROGRESS_EMIT_THRESHOLD: u64 = 100 * 1024;
+const DEFAULT_TIMEOUT: u64 = 30;
+const DOWNLOAD_TIMEOUT: u64 = 600;
+const CONNECT_TIMEOUT: u64 = 30;
+const POOL_IDLE_TIMEOUT: u64 = 90;
+const TCP_KEEPALIVE: u64 = 60;
+const HASH_BUFFER_SIZE: usize = 8192;
 
-    let os = std::env::consts::OS;
-    let arch = std::env::consts::ARCH;
+const PLATFORM_MAP: &[(&str, &str, &str)] = &[
+    ("windows", "x86_64", "win_amd64.exe"),
+    ("windows", "x86", "win_386.exe"),
+    ("windows", "aarch64", "win_arm64.exe"),
+    ("linux", "x86", "linux_386"),
+    ("linux", "x86_64", "linux_amd64"),
+    ("linux", "arm", "linux_arm"),
+    ("linux", "aarch64", "linux_arm64"),
+    ("linux", "mips64", "linux_mips64"),
+    ("linux", "mips", "linux_mips"),
+    ("linux", "riscv64", "linux_riscv64"),
+    ("macos", "x86_64", "darwin_amd64"),
+    ("macos", "aarch64", "darwin_arm64"),
+];
 
-    let mut client_builder = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .user_agent("ChmlFrpLauncher/1.0");
-
-    // 检查是否需要绕过代理
+fn build_http_client(timeout_secs: u64) -> Result<reqwest::Client, String> {
     let bypass_proxy = std::env::var("BYPASS_PROXY")
         .unwrap_or_else(|_| "true".to_string())
         .parse::<bool>()
         .unwrap_or(true);
 
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .user_agent("ChmlFrpLauncher/1.0");
+
     if bypass_proxy {
-        client_builder = client_builder.no_proxy();
+        builder = builder.no_proxy();
     }
 
-    let client = client_builder
-        .build()
-        .map_err(|e| format!("Failed to create client: {}", e))?;
+    builder.build().map_err(|e| format!("Failed to create client: {}", e))
+}
+
+fn get_platform_string(os: &str, arch: &str) -> Option<&'static str> {
+    PLATFORM_MAP
+        .iter()
+        .find(|(o, a, _)| *o == os && *a == arch)
+        .map(|(_, _, platform)| *platform)
+}
+
+fn matches_arch(os: &str, arch: &str, download_arch: &str) -> bool {
+    match (os, arch) {
+        ("windows", "x86_64") => download_arch == "x86_64",
+        ("windows", "x86") => download_arch == "x86",
+        ("windows", "aarch64") => download_arch == "aarch64",
+        ("linux", "x86") => download_arch == "x86",
+        ("linux", "x86_64") => download_arch == "x86_64",
+        ("linux", "arm") => download_arch == "arm",
+        ("linux", "aarch64") => download_arch == "aarch64" || download_arch == "arm",
+        ("linux", "mips64") => download_arch == "mips64",
+        ("linux", "mips") => download_arch == "mips",
+        ("linux", "riscv64") => download_arch == "riscv64",
+        ("macos", "x86_64") => download_arch == "x86_64",
+        ("macos", "aarch64") => download_arch == "aarch64",
+        _ => false,
+    }
+}
+
+fn verify_sha256(file_path: &Path, expected_hash: &str) -> Result<(), String> {
+    let mut file = std::fs::File::open(file_path)
+        .map_err(|e| format!("无法打开文件进行 hash 验证: {}", e))?;
+
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; HASH_BUFFER_SIZE];
+
+    loop {
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("读取文件失败: {}", e))?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let computed_hash = hex::encode(hasher.finalize());
+
+    if computed_hash.to_lowercase() != expected_hash.to_lowercase() {
+        return Err(format!(
+            "文件 hash 验证失败: 预期 {}, 实际 {}",
+            expected_hash, computed_hash
+        ));
+    }
+
+    Ok(())
+}
+
+fn set_executable_permission(file_path: &Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(file_path)
+            .map_err(|e| e.to_string())?
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(file_path, perms).map_err(|e| e.to_string())?;
+    }
+    let _ = file_path;
+    Ok(())
+}
+
+pub async fn get_download_info() -> Result<DownloadInfo, String> {
+    let api_url = "https://cf-v1.uapis.cn/download/frpc/frpc_info.json";
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+
+    let client = build_http_client(DEFAULT_TIMEOUT)?;
 
     let response = client
         .get(api_url)
@@ -52,73 +147,31 @@ pub async fn get_download_info() -> Result<DownloadInfo, String> {
         return Err(format!("API returned error: {}", info_response.msg));
     }
 
-    let mut matched_downloads: Vec<&FrpcDownload> = Vec::new();
+    let platform = get_platform_string(os, arch)
+        .ok_or_else(|| format!("Unsupported platform: {} {}", os, arch))?;
 
-    // 首先尝试通过 platform 字段匹配（更精确）
-    let platform = match (os, arch) {
-        ("windows", "x86_64") => "win_amd64.exe",
-        ("windows", "x86") => "win_386.exe",
-        ("windows", "aarch64") => "win_arm64.exe",
-        ("linux", "x86") => "linux_386",
-        ("linux", "x86_64") => "linux_amd64",
-        ("linux", "arm") => "linux_arm",
-        ("linux", "aarch64") => "linux_arm64",
-        ("linux", "mips64") => "linux_mips64",
-        ("linux", "mips") => "linux_mips",
-        ("linux", "riscv64") => "linux_riscv64",
-        ("macos", "x86_64") => "darwin_amd64",
-        ("macos", "aarch64") => "darwin_arm64",
-        _ => return Err(format!("Unsupported platform: {} {}", os, arch)),
-    };
+    let mut matched_downloads: Vec<&FrpcDownload> = info_response
+        .data
+        .downloads
+        .iter()
+        .filter(|d| d.platform == platform)
+        .collect();
 
-    for download in &info_response.data.downloads {
-        if download.platform == platform {
-            matched_downloads.push(download);
-        }
-    }
-
-    // 如果 platform 匹配失败，尝试通过 os 和 arch 匹配
     if matched_downloads.is_empty() {
-        let target_os = match os {
-            "macos" => "darwin",
-            _ => os,
-        };
+        let target_os = if os == "macos" { "darwin" } else { os };
 
-        for download in &info_response.data.downloads {
-            if download.os == target_os {
-                let matches_arch = match (os, arch) {
-                    ("windows", "x86_64") => download.arch == "x86_64",
-                    ("windows", "x86") => download.arch == "x86",
-                    ("windows", "aarch64") => download.arch == "aarch64",
-                    ("linux", "x86") => download.arch == "x86",
-                    ("linux", "x86_64") => download.arch == "x86_64",
-                    ("linux", "arm") => download.arch == "arm",
-                    ("linux", "aarch64") => download.arch == "aarch64" || download.arch == "arm",
-                    ("linux", "mips64") => download.arch == "mips64",
-                    ("linux", "mips") => download.arch == "mips",
-                    ("linux", "riscv64") => download.arch == "riscv64",
-                    ("macos", "x86_64") => download.arch == "x86_64",
-                    ("macos", "aarch64") => download.arch == "aarch64",
-                    _ => false,
-                };
-
-                if matches_arch {
-                    matched_downloads.push(download);
-                }
-            }
-        }
+        matched_downloads = info_response
+            .data
+            .downloads
+            .iter()
+            .filter(|d| d.os == target_os && matches_arch(os, arch, &d.arch))
+            .collect();
     }
 
-    let download = if matched_downloads.is_empty() {
-        return Err(format!(
-            "No matching download found for platform: {} {}",
-            os, arch
-        ));
-    } else if matched_downloads.len() == 1 {
-        matched_downloads[0]
-    } else {
-        // 如果有多个匹配项，选择 size 最大的（通常是最新版本）
-        matched_downloads.iter().max_by_key(|d| d.size).unwrap()
+    let download = match matched_downloads.len() {
+        0 => return Err(format!("No matching download found for platform: {} {}", os, arch)),
+        1 => matched_downloads[0],
+        _ => matched_downloads.iter().max_by_key(|d| d.size).unwrap(),
     };
 
     Ok(DownloadInfo {
@@ -162,7 +215,6 @@ pub async fn get_download_url() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
-    // 从 API 获取下载信息
     let download_info = get_download_info().await?;
     let url = download_info.url;
     let expected_hash = download_info.hash;
@@ -173,7 +225,7 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         .app_data_dir()
         .map_err(|e| e.to_string())?;
 
-    fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
 
     let frpc_path = if cfg!(target_os = "windows") {
         app_dir.join("frpc.exe")
@@ -181,44 +233,36 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         app_dir.join("frpc")
     };
 
-    let mut client_builder = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(600))
-        .connect_timeout(std::time::Duration::from_secs(30))
-        .pool_idle_timeout(std::time::Duration::from_secs(90))
-        .tcp_keepalive(std::time::Duration::from_secs(60))
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(DOWNLOAD_TIMEOUT))
+        .connect_timeout(std::time::Duration::from_secs(CONNECT_TIMEOUT))
+        .pool_idle_timeout(std::time::Duration::from_secs(POOL_IDLE_TIMEOUT))
+        .tcp_keepalive(std::time::Duration::from_secs(TCP_KEEPALIVE))
         .user_agent("ChmlFrpLauncher/1.0");
 
-    // 检查是否需要绕过代理
     let bypass_proxy = std::env::var("BYPASS_PROXY")
         .unwrap_or_else(|_| "true".to_string())
         .parse::<bool>()
         .unwrap_or(true);
 
-    if bypass_proxy {
-        client_builder = client_builder.no_proxy();
+    let client = if bypass_proxy {
+        client.no_proxy()
+    } else {
+        client
     }
+    .build()
+    .map_err(|e| format!("Failed to create client: {}", e))?;
 
-    let client = client_builder
-        .build()
-        .map_err(|e| format!("Failed to create client: {}", e))?;
-
-    // 使用 API 返回的文件大小，如果没有则尝试从 HTTP 响应获取
     let mut total_size: u64 = expected_size;
 
-    // 如果 API 没有提供大小，尝试 HEAD 请求获取
     if total_size == 0 {
         if let Ok(head_response) = client.head(&url).send().await {
             if let Some(len) = head_response.content_length() {
                 total_size = len;
             }
         }
-
-        if total_size == 0 {
-            eprintln!("HEAD 请求未获取文件大小，将从 GET 响应头获取");
-        }
     }
 
-    use std::fs::OpenOptions;
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -228,10 +272,7 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
 
     let mut downloaded: u64 = 0;
     let mut retry_count = 0;
-    const MAX_RETRIES: u32 = 5;
-    const CHUNK_SIZE: u64 = 1024 * 1024; // 1MB 分块
 
-    // 断点续传
     loop {
         let mut request = client.get(&url);
 
@@ -262,15 +303,13 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         };
 
         let status = response.status();
-        let is_success = status.is_success() || status.as_u16() == 206; // 206 = Partial Content
-        if !is_success {
+        if !status.is_success() && status.as_u16() != 206 {
             return Err(format!("下载失败，HTTP 状态码: {}", status));
         }
 
         if status.as_u16() == 206 {
             if let Some(content_range) = response.headers().get("content-range") {
                 if let Ok(range_str) = content_range.to_str() {
-                    // 格式: bytes start-end/total
                     if let Some(slash_pos) = range_str.rfind('/') {
                         if let Ok(size) = range_str[slash_pos + 1..].parse::<u64>() {
                             if size > 0 && total_size != size {
@@ -295,11 +334,11 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         while let Some(item) = stream.next().await {
             match item {
                 Ok(chunk) => {
-                    use std::io::Write;
                     if let Err(e) = file.write_all(&chunk) {
-                        // 提供更详细的错误信息，帮助前端识别杀毒软件拦截
-                        let err_msg = format!("写入文件失败: {}。这可能是由于杀毒软件拦截，请将 frpc 目录添加到杀毒软件白名单", e);
-                        return Err(err_msg);
+                        return Err(format!(
+                            "写入文件失败: {}。这可能是由于杀毒软件拦截，请将 frpc 目录添加到杀毒软件白名单",
+                            e
+                        ));
                     }
 
                     let chunk_len = chunk.len() as u64;
@@ -312,8 +351,7 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
                         0.0
                     };
 
-                    // 发送进度更新（每 100KB 发送一次）
-                    if this_chunk_size >= 100 * 1024 {
+                    if this_chunk_size >= PROGRESS_EMIT_THRESHOLD {
                         let _ = app_handle.emit(
                             "download-progress",
                             DownloadProgress {
@@ -325,9 +363,9 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
                         this_chunk_size = 0;
                     }
                 }
-                Err(_e) => {
+                Err(_) => {
                     chunk_error = true;
-                    break; // 跳出内层循环，外层循环会重试
+                    break;
                 }
             }
         }
@@ -353,7 +391,6 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         }
     }
 
-    use std::io::Write;
     file.flush().map_err(|e| format!("刷新文件失败: {}", e))?;
 
     let _ = app_handle.emit(
@@ -365,7 +402,6 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         },
     );
 
-    // 验证下载的文件大小（如果知道预期大小）
     if total_size > 0 && downloaded < total_size {
         return Err(format!(
             "下载不完整: 预期 {} bytes, 实际下载 {} bytes",
@@ -377,53 +413,14 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         return Err("下载失败: 没有接收到任何数据".to_string());
     }
 
-    // 验证 SHA256 hash
     eprintln!("开始验证文件 hash...");
-    let mut file_for_hash = std::fs::File::open(&frpc_path)
-        .map_err(|e| format!("无法打开文件进行 hash 验证: {}", e))?;
-
-    let mut hasher = Sha256::new();
-    let mut buffer = vec![0u8; 8192]; // 8KB 缓冲区
-
-    loop {
-        let bytes_read = file_for_hash
-            .read(&mut buffer)
-            .map_err(|e| format!("读取文件失败: {}", e))?;
-
-        if bytes_read == 0 {
-            break;
-        }
-
-        hasher.update(&buffer[..bytes_read]);
+    if let Err(e) = verify_sha256(&frpc_path, &expected_hash) {
+        let _ = std::fs::remove_file(&frpc_path);
+        return Err(e);
     }
-
-    let computed_hash = hasher.finalize();
-    let computed_hash_hex = hex::encode(computed_hash);
-
-    eprintln!("预期 hash: {}", expected_hash);
-    eprintln!("计算 hash: {}", computed_hash_hex);
-
-    if computed_hash_hex.to_lowercase() != expected_hash.to_lowercase() {
-        // 删除损坏的文件
-        let _ = fs::remove_file(&frpc_path);
-        return Err(format!(
-            "文件 hash 验证失败: 预期 {}, 实际 {}",
-            expected_hash, computed_hash_hex
-        ));
-    }
-
     eprintln!("文件 hash 验证成功");
 
-    // 在 Unix 系统上设置执行权限
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&frpc_path)
-            .map_err(|e| e.to_string())?
-            .permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&frpc_path, perms).map_err(|e| e.to_string())?;
-    }
+    set_executable_permission(&frpc_path)?;
 
     Ok(frpc_path.to_string_lossy().to_string())
 }
