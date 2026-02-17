@@ -19,6 +19,9 @@ import { useFrpcDownload } from "@/components/App/hooks/useFrpcDownload";
 import { useUpdateCheck } from "@/components/App/hooks/useUpdateCheck";
 import { updateService } from "@/services/updateService";
 import { toast } from "sonner";
+import { logStore } from "@/services/logStore";
+import type { LogMessage } from "@/services/frpcManager";
+import { playTunnelSound } from "@/lib/sound";
 import { BackgroundLayer } from "@/components/App/components/BackgroundLayer";
 import { getInitialSidebarMode } from "@/components/pages/Settings/utils";
 import type { SidebarMode } from "@/components/pages/Settings/types";
@@ -40,6 +43,9 @@ function App() {
   const SIDEBAR_LEFT = isMacOS && !showTitleBar ? 10 : 15; // px
   const SIDEBAR_COLLAPSED_WIDTH = Math.round(((20 * 5) / 3) * 2); // ~66 px (double the previous collapsed width)
   const appContainerRef = useRef<HTMLDivElement>(null);
+  const processedLogsCountRef = useRef(0);
+  const notifiedSuccessRef = useRef<Set<number>>(new Set());
+  const notifiedErrorRef = useRef<Set<number>>(new Set());
   const {
     backgroundImage,
     overlayOpacity,
@@ -72,6 +78,56 @@ function App() {
     return () =>
       window.removeEventListener("sidebarModeChanged", handleSidebarModeChange);
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = logStore.subscribe((logs: LogMessage[]) => {
+      if (logs.length === 0) return;
+
+      const startIndex = processedLogsCountRef.current;
+      if (startIndex >= logs.length) return;
+
+      const newLogs = logs.slice(startIndex);
+      processedLogsCountRef.current = logs.length;
+
+      const skipNotifications = activeTab === "tunnels";
+
+      for (const log of newLogs) {
+        const tunnelId = log.tunnel_id;
+        const message = log.message;
+
+        if (message.includes("frpc 进程已启动")) {
+          notifiedSuccessRef.current.delete(tunnelId);
+          notifiedErrorRef.current.delete(tunnelId);
+        }
+
+        if (skipNotifications) {
+          continue;
+        }
+
+        if (message.includes("映射启动成功")) {
+          if (!notifiedSuccessRef.current.has(tunnelId)) {
+            notifiedSuccessRef.current.add(tunnelId);
+            const soundEnabled =
+              localStorage.getItem("tunnelSoundEnabled") !== "false";
+            playTunnelSound("success", soundEnabled);
+            toast.success("隧道启动成功", { duration: 4000 });
+          }
+        } else if (message.includes("启动失败")) {
+          if (!notifiedErrorRef.current.has(tunnelId)) {
+            notifiedErrorRef.current.add(tunnelId);
+            const soundEnabled =
+              localStorage.getItem("tunnelSoundEnabled") !== "false";
+            playTunnelSound("error", soundEnabled);
+            toast.error("隧道启动失败，请查看日志", { duration: 6000 });
+          }
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeTab]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
