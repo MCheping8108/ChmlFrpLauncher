@@ -10,22 +10,25 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { updateService } from "@/services/updateService";
 import { customTunnelService, type CustomTunnel } from "@/services/customTunnelService";
 
-type LogLevel = "software" | "error" | "warning" | "info";
+type LogLevel = "software" | "error" | "warning" | "info" | "debug";
 
 function getLogLevel(message: string): LogLevel {
   if (message.includes("[ChmlFrpLauncher]")) {
     return "software";
   }
-  if (message.includes("[E]")) {
+  if (/\[(E|ERR)\]/.test(message)) {
     return "error";
   }
-  if (message.includes("[W]")) {
+  if (/\[W\]/.test(message)) {
     return "warning";
   }
-  if (message.includes("[I]")) {
+  if (/\[(D|T)\]/.test(message)) {
+    return "debug";
+  }
+  if (/\[I\]/.test(message)) {
     return "info";
   }
-  return "software";
+  return "info";
 }
 
 function getLogColorClass(level: LogLevel): string {
@@ -36,6 +39,8 @@ function getLogColorClass(level: LogLevel): string {
       return "text-yellow-500";
     case "software":
       return "text-blue-400";
+    case "debug":
+      return "text-foreground/60";
     default:
       return "text-foreground/90";
   }

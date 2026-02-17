@@ -349,6 +349,7 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
         writeln!(content, "http_proxy = {}", proxy_url).unwrap();
     }
 
+    writeln!(content, "log_level = {}", config.log_level).unwrap();
     writeln!(content, "tls_enable = {}", config.force_tls).unwrap();
     writeln!(content, "tcp_mux = true").unwrap();
     writeln!(content, "pool_count = 5").unwrap();

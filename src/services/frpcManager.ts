@@ -21,6 +21,7 @@ export interface TunnelConfig {
   remote_port?: number;
   custom_domains?: string;
   http_proxy?: string;
+  log_level: string;
   force_tls: boolean;
   kcp_optimization: boolean;
 }
@@ -87,6 +88,7 @@ export class FrpcManager {
       remote_port: tunnel.type === "tcp" ? (tunnel.dorp ? parseInt(tunnel.dorp) : undefined) : undefined,
       custom_domains: tunnel.type === "http" || tunnel.type === "https" ? tunnel.dorp : undefined,
       http_proxy: httpProxy,
+      log_level: localStorage.getItem("frpcLogLevel") || "info",
       force_tls: forceTls,
       kcp_optimization: kcpOptimization,
     };

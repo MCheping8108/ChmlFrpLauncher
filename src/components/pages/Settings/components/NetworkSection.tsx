@@ -97,8 +97,6 @@ export function NetworkSection({
           </ItemActions>
         </Item>
 
-        <div className="border-t border-border/50" />
-
         <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>Frpc 代理</ItemTitle>
@@ -140,8 +138,8 @@ export function NetworkSection({
                   { value: "socks5", label: "SOCKS5" },
                 ]}
                 value={proxyConfig.type}
-                onChange={(value) =>
-                  updateProxyConfig({ type: value as "http" | "socks5" })
+                onChange={(value: string | number) =>
+                  updateProxyConfig({ type: String(value) as "http" | "socks5" })
                 }
                 size="sm"
               />
