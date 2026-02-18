@@ -20,6 +20,8 @@ import type { ProxyConfig } from "../hooks/useProxy";
 interface NetworkSectionProps {
   bypassProxy: boolean;
   setBypassProxy: (value: boolean) => void;
+  ipv6OnlyNetwork: boolean;
+  setIpv6OnlyNetwork: (value: boolean) => void;
   proxyConfig: ProxyConfig;
   updateProxyConfig: (updates: Partial<ProxyConfig>) => void;
 }
@@ -27,6 +29,8 @@ interface NetworkSectionProps {
 export function NetworkSection({
   bypassProxy,
   setBypassProxy,
+  ipv6OnlyNetwork,
+  setIpv6OnlyNetwork,
   proxyConfig,
   updateProxyConfig,
 }: NetworkSectionProps) {
@@ -65,6 +69,33 @@ export function NetworkSection({
         </Item>
 
         <div className="border-t border-border/50" />
+
+        <Item variant="outline" className="border-0">
+          <ItemContent>
+            <ItemTitle>仅存在IPV6网络</ItemTitle>
+            <ItemDescription className="text-xs">
+              仅 IPV6 环境时启用，自动限制为支持 IPV6 的节点
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <button
+              onClick={() => setIpv6OnlyNetwork(!ipv6OnlyNetwork)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
+                ipv6OnlyNetwork
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
+              } cursor-pointer`}
+              role="switch"
+              aria-checked={ipv6OnlyNetwork}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
+                  ipv6OnlyNetwork ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </ItemActions>
+        </Item>
 
         <Item variant="outline" className="border-0">
           <ItemContent>
@@ -107,8 +138,10 @@ export function NetworkSection({
                   { value: "socks5", label: "SOCKS5" },
                 ]}
                 value={proxyConfig.type}
-                onChange={(value) =>
-                  updateProxyConfig({ type: value as "http" | "socks5" })
+                onChange={(value: string | number) =>
+                  updateProxyConfig({
+                    type: String(value) as "http" | "socks5",
+                  })
                 }
                 size="sm"
               />
@@ -187,51 +220,17 @@ export function NetworkSection({
 
         <Item variant="outline" className="border-0">
           <ItemContent>
-            <ItemTitle>多路复用</ItemTitle>
-            <ItemDescription className="text-xs">
-              启用 TCP 多路复用，提升连接性能
-            </ItemDescription>
-          </ItemContent>
-          <ItemActions>
-            <button
-              onClick={() =>
-                updateProxyConfig({ tcpMux: !proxyConfig.tcpMux })
-              }
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                proxyConfig.tcpMux
-                  ? "bg-foreground"
-                  : "bg-muted dark:bg-foreground/12"
-              } cursor-pointer`}
-              role="switch"
-              aria-checked={proxyConfig.tcpMux}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
-                  proxyConfig.tcpMux ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-          </ItemActions>
-        </Item>
-
-        <div className="border-t border-border/50" />
-
-        <Item variant="outline" className="border-0">
-          <ItemContent>
             <ItemTitle className="flex items-center gap-1.5">
               强制 TLS
-                <Tooltip>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="max-w-xs text-balance"
-                >
+                <TooltipContent side="top" className="max-w-xs text-balance">
                   建议在频繁出现Frp连接被拦截的情况下开启
                 </TooltipContent>
               </Tooltip>
-              </ItemTitle>
+            </ItemTitle>
             <ItemDescription className="text-xs">
               强制使用 TLS 加密与节点连接
             </ItemDescription>
@@ -268,10 +267,7 @@ export function NetworkSection({
                 <TooltipTrigger asChild>
                   <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="max-w-xs text-balance"
-                >
+                <TooltipContent side="top" className="max-w-xs text-balance">
                   此功能通过浪费1.2~1.5倍带宽和系统占用的代价以降低延迟，仅建议游戏联机、因为网络问题出现严重丢包/卡顿的情况下开启。其余情况开启可能反而造成负面效果
                 </TooltipContent>
               </Tooltip>

@@ -1,4 +1,7 @@
-export const playTunnelSound = (type: "success" | "error", enabled: boolean): void => {
+export const playTunnelSound = (
+  type: "success" | "error",
+  enabled: boolean,
+): void => {
   if (!enabled) return;
 
   try {

@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
-import type { Tunnel } from "./api";
+import { getNodeUdpSupport, type Tunnel } from "./api";
 
 export interface LogMessage {
   tunnel_id: number;
@@ -21,7 +21,7 @@ export interface TunnelConfig {
   remote_port?: number;
   custom_domains?: string;
   http_proxy?: string;
-  tcp_mux: boolean;
+  log_level: string;
   force_tls: boolean;
   kcp_optimization: boolean;
 }
@@ -32,7 +32,6 @@ export class FrpcManager {
   async startTunnel(tunnel: Tunnel, userToken: string): Promise<string> {
     // 获取代理配置
     let httpProxy: string | undefined;
-    let tcpMux = true;
     let forceTls = false;
     let kcpOptimization = false;
 
@@ -51,7 +50,6 @@ export class FrpcManager {
         }
 
         // 其他配置
-        tcpMux = proxyConfig.tcpMux !== undefined ? proxyConfig.tcpMux : true;
         forceTls = proxyConfig.forceTls || false;
         kcpOptimization = proxyConfig.kcpOptimization || false;
       }
@@ -59,20 +57,46 @@ export class FrpcManager {
       console.error("解析代理配置失败:", error);
     }
 
+    if (kcpOptimization) {
+      const udpSupport = await getNodeUdpSupport(tunnel.node, userToken);
+      if (udpSupport !== true) {
+        kcpOptimization = false;
+      }
+    }
+
+    const ipv6OnlyNetwork =
+      typeof window !== "undefined" &&
+      localStorage.getItem("ipv6OnlyNetwork") === "true";
+    const serverAddr = ipv6OnlyNetwork
+      ? tunnel.node_ipv6 || ""
+      : tunnel.node_ip;
+
+    if (ipv6OnlyNetwork && !tunnel.node_ipv6) {
+      throw new Error("此节点无IPV6，您的网络仅支持IPV6");
+    }
+
     const config: TunnelConfig = {
       tunnel_id: tunnel.id,
       tunnel_name: tunnel.name,
       user_token: userToken,
-      server_addr: tunnel.node_ip,
+      server_addr: serverAddr,
       server_port: tunnel.server_port,
       node_token: tunnel.node_token,
       tunnel_type: tunnel.type,
       local_ip: tunnel.localip,
       local_port: tunnel.nport,
-      remote_port: tunnel.type === "tcp" ? (tunnel.dorp ? parseInt(tunnel.dorp) : undefined) : undefined,
-      custom_domains: tunnel.type === "http" || tunnel.type === "https" ? tunnel.dorp : undefined,
+      remote_port:
+        tunnel.type === "tcp"
+          ? tunnel.dorp
+            ? parseInt(tunnel.dorp)
+            : undefined
+          : undefined,
+      custom_domains:
+        tunnel.type === "http" || tunnel.type === "https"
+          ? tunnel.dorp
+          : undefined,
       http_proxy: httpProxy,
-      tcp_mux: tcpMux,
+      log_level: localStorage.getItem("frpcLogLevel") || "info",
       force_tls: forceTls,
       kcp_optimization: kcpOptimization,
     };

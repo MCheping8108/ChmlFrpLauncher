@@ -69,7 +69,8 @@ export function useTunnelProgress(
 
       logStore.addLog({
         tunnel_id: tunnelId,
-        message: "[I] [ChmlFrpLauncher] 隧道重复启动导致隧道启动失败，自动修复中....",
+        message:
+          "[I] [ChmlFrpLauncher] 隧道重复启动导致隧道启动失败，自动修复中....",
         timestamp,
       });
 
@@ -174,15 +175,16 @@ export function useTunnelProgress(
                     isError: true,
                     isSuccess: false,
                   };
-                    tunnelProgressCache.set(tunnelId, errorProgress);
-                   
-                    if (!playedSoundRef.current.has(tunnelKey)) {
-                      playedSoundRef.current.add(tunnelKey);
-                      const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
-                      playTunnelSound("error", soundEnabled);
-                    }
-                   
-                    return new Map(prev).set(tunnelKey, errorProgress);
+                  tunnelProgressCache.set(tunnelId, errorProgress);
+
+                  if (!playedSoundRef.current.has(tunnelKey)) {
+                    playedSoundRef.current.add(tunnelKey);
+                    const soundEnabled =
+                      localStorage.getItem("tunnelSoundEnabled") !== "false";
+                    playTunnelSound("error", soundEnabled);
+                  }
+
+                  return new Map(prev).set(tunnelKey, errorProgress);
                 }
                 return prev;
               });
@@ -209,13 +211,14 @@ export function useTunnelProgress(
               isError: true,
             };
             tunnelProgressCache.set(tunnelId, errorProgress);
-            
+
             if (!playedSoundRef.current.has(tunnelKey)) {
               playedSoundRef.current.add(tunnelKey);
-              const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
+              const soundEnabled =
+                localStorage.getItem("tunnelSoundEnabled") !== "false";
               playTunnelSound("error", soundEnabled);
             }
-            
+
             return new Map(prev).set(tunnelKey, errorProgress);
           }
           return prev;
@@ -250,9 +253,6 @@ export function useTunnelProgress(
       });
 
       try {
-        // TLS 错误修复：由于现在使用独立配置文件，不再需要修改 frpc.ini
-        // 直接重启隧道即可，因为配置文件会在启动时重新生成
-
         try {
           await frpcManager.stopTunnel(tunnelId);
           await new Promise((resolve) => setTimeout(resolve, 500));
@@ -328,13 +328,14 @@ export function useTunnelProgress(
                   isSuccess: false,
                 };
                 tunnelProgressCache.set(tunnelId, errorProgress);
-                
+
                 if (!playedSoundRef.current.has(tunnelKey)) {
                   playedSoundRef.current.add(tunnelKey);
-                  const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
+                  const soundEnabled =
+                    localStorage.getItem("tunnelSoundEnabled") !== "false";
                   playTunnelSound("error", soundEnabled);
                 }
-                
+
                 return new Map(prev).set(tunnelKey, errorProgress);
               }
               return prev;
@@ -362,13 +363,14 @@ export function useTunnelProgress(
               isError: true,
             };
             tunnelProgressCache.set(tunnelId, errorProgress);
-            
+
             if (!playedSoundRef.current.has(tunnelKey)) {
               playedSoundRef.current.add(tunnelKey);
-              const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
+              const soundEnabled =
+                localStorage.getItem("tunnelSoundEnabled") !== "false";
               playTunnelSound("error", soundEnabled);
             }
-            
+
             return new Map(prev).set(tunnelKey, errorProgress);
           }
           return prev;
@@ -381,7 +383,7 @@ export function useTunnelProgress(
         });
       }
     },
-    [fixingTlsTunnels, setRunningTunnels],
+    [fixingTlsTunnels, setRunningTunnels, tunnels],
   );
 
   useEffect(() => {
@@ -418,7 +420,7 @@ export function useTunnelProgress(
                   ...progress,
                   isSuccess: false,
                 });
-                
+
                 if (progress.progress === 100) {
                   playedSoundRef.current.add(tunnelKey);
                 }
@@ -481,7 +483,8 @@ export function useTunnelProgress(
 
                   if (!playedSoundRef.current.has(tunnelKey)) {
                     playedSoundRef.current.add(tunnelKey);
-                    const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
+                    const soundEnabled =
+                      localStorage.getItem("tunnelSoundEnabled") !== "false";
                     playTunnelSound("error", soundEnabled);
                   }
 
@@ -513,14 +516,15 @@ export function useTunnelProgress(
 
             if (!playedSoundRef.current.has(tunnelKey)) {
               playedSoundRef.current.add(tunnelKey);
-              const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
+              const soundEnabled =
+                localStorage.getItem("tunnelSoundEnabled") !== "false";
               playTunnelSound("success", soundEnabled);
             }
 
             const tunnel = tunnels.find((t) => t.id === tunnelId);
             if (tunnel && !loggedSuccessRef.current.has(tunnelId)) {
               loggedSuccessRef.current.add(tunnelId);
-              
+
               const timestamp = new Date()
                 .toLocaleString("zh-CN", {
                   year: "numeric",
@@ -534,8 +538,10 @@ export function useTunnelProgress(
                 .replace(/\//g, "/");
 
               const tunnelName = tunnel.name || `隧道${tunnelId}`;
-              const isHttpTunnel = tunnel.type?.toLowerCase() === "http" || tunnel.type?.toLowerCase() === "https";
-              
+              const isHttpTunnel =
+                tunnel.type?.toLowerCase() === "http" ||
+                tunnel.type?.toLowerCase() === "https";
+
               if (isHttpTunnel) {
                 const link = tunnel.dorp || "";
                 if (link) {
@@ -552,42 +558,59 @@ export function useTunnelProgress(
                   });
                 }
               } else {
-                const link = tunnel.ip && tunnel.dorp ? `${tunnel.ip}:${tunnel.dorp}` : "";
                 const remotePort = tunnel.dorp || "";
-                
-                (async () => {
-                  let fallbackLink = "";
-                  
-                  if (tunnel.ip) {
-                    const resolvedIp = await frpcManager.resolveDomainToIp(tunnel.ip);
-                    if (resolvedIp && remotePort) {
-                      fallbackLink = `${resolvedIp}:${remotePort}`;
-                    }
-                  }
-                  
-                  if (link && fallbackLink && link !== fallbackLink) {
-                    logStore.addLog({
-                      tunnel_id: tunnelId,
-                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"访问（推荐）。如果无法访问，可以尝试使用"${fallbackLink}"链接。`,
-                      timestamp,
-                    });
-                  } else if (link) {
-                    logStore.addLog({
-                      tunnel_id: tunnelId,
-                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功，您可以通过"${link}"链接。`,
-                      timestamp,
-                    });
-                  } else {
-                    logStore.addLog({
-                      tunnel_id: tunnelId,
-                      message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功。`,
-                      timestamp,
-                    });
-                  }
-                })();
+                const primaryLink =
+                  tunnel.ip && remotePort ? `${tunnel.ip}:${remotePort}` : "";
+                const fallbackLink =
+                  tunnel.node_ip && remotePort
+                    ? `${tunnel.node_ip}:${remotePort}`
+                    : "";
+                const normalizedIpv6 =
+                  typeof tunnel.node_ipv6 === "string"
+                    ? tunnel.node_ipv6.trim()
+                    : "";
+                const ipv6Link =
+                  normalizedIpv6 &&
+                  normalizedIpv6 !== "null" &&
+                  normalizedIpv6 !== "undefined" &&
+                  remotePort
+                    ? `[${normalizedIpv6}]:${remotePort}`
+                    : "";
+
+                let messageText = `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功`;
+
+                if (primaryLink) {
+                  messageText += `，您可以通过"${primaryLink}"访问（推荐）`;
+                } else if (fallbackLink) {
+                  messageText += `，您可以通过"${fallbackLink}"访问`;
+                }
+
+                if (
+                  fallbackLink &&
+                  primaryLink &&
+                  fallbackLink !== primaryLink
+                ) {
+                  messageText += `。如果无法访问，可以尝试使用"${fallbackLink}"连接`;
+                }
+
+                if (
+                  ipv6Link &&
+                  ipv6Link !== primaryLink &&
+                  ipv6Link !== fallbackLink
+                ) {
+                  messageText += `。若支持IPV6，也可使用"${ipv6Link}"连接`;
+                }
+
+                messageText += "。";
+
+                logStore.addLog({
+                  tunnel_id: tunnelId,
+                  message: messageText,
+                  timestamp,
+                });
               }
             }
-            
+
             const successTimeout = setTimeout(() => {
               setTunnelProgress((prev) => {
                 const current = prev.get(tunnelKey);
@@ -694,7 +717,8 @@ export function useTunnelProgress(
 
             if (!playedSoundRef.current.has(tunnelKey)) {
               playedSoundRef.current.add(tunnelKey);
-              const soundEnabled = localStorage.getItem("tunnelSoundEnabled") !== "false";
+              const soundEnabled =
+                localStorage.getItem("tunnelSoundEnabled") !== "false";
               playTunnelSound("error", soundEnabled);
             }
           } else if (

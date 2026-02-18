@@ -6,11 +6,27 @@ import {
   getInitialVideoVolume,
 } from "@/components/pages/Settings/utils";
 
+export type BackgroundType = "image" | "video" | null;
+
+export interface UseBackgroundReturn {
+  backgroundImage: string | null;
+  overlayOpacity: number;
+  blur: number;
+  effectType: EffectType;
+  videoLoadError: boolean;
+  videoRef: React.MutableRefObject<HTMLVideoElement | null>;
+  videoStartSound: boolean;
+  videoVolume: number;
+  videoSrc: string | null;
+  backgroundType: BackgroundType;
+  getBackgroundColorWithOpacity: (opacity: number) => string;
+}
+
 /**
  * 背景管理 hook
  * 处理背景图片、视频、覆盖层、模糊等效果
  */
-export function useBackground() {
+export function useBackground(): UseBackgroundReturn {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("backgroundImage");

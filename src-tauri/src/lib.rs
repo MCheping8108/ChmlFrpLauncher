@@ -10,6 +10,75 @@ use tauri::{
     Emitter, Listener, Manager,
 };
 
+const AUTO_START_CONFIG_FILE: &str = "auto_start_tunnels.json";
+
+fn get_auto_start_tunnels_setting(app_handle: &tauri::AppHandle) -> bool {
+    let Some(app_data_dir) = app_handle.path().app_data_dir().ok() else {
+        return false;
+    };
+    let config_path = app_data_dir.join(AUTO_START_CONFIG_FILE);
+    if !config_path.exists() {
+        return false;
+    }
+    let Ok(content) = std::fs::read_to_string(&config_path) else {
+        return false;
+    };
+    serde_json::from_str::<serde_json::Value>(&content)
+        .ok()
+        .and_then(|config| config.get("enabled").and_then(|v| v.as_bool()))
+        .unwrap_or(false)
+}
+
+fn save_auto_start_tunnels_setting(app_handle: &tauri::AppHandle, enabled: bool) -> bool {
+    let Some(app_data_dir) = app_handle.path().app_data_dir().ok() else {
+        return false;
+    };
+    if std::fs::create_dir_all(&app_data_dir).is_err() {
+        return false;
+    }
+    let config_path = app_data_dir.join(AUTO_START_CONFIG_FILE);
+    let config = serde_json::json!({ "enabled": enabled });
+    std::fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap()).is_ok()
+}
+
+fn cleanup_official_tunnel_configs(app_handle: &tauri::AppHandle) {
+    let Ok(app_data_dir) = app_handle.path().app_data_dir() else {
+        return;
+    };
+    let Ok(entries) = std::fs::read_dir(&app_data_dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if let Ok(file_name) = entry.file_name().into_string() {
+            if file_name.starts_with("g_") && file_name.ends_with(".ini") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+}
+
+fn build_tray_menu(app: &tauri::App) -> Result<tauri::menu::Menu<tauri::Wry>, Box<dyn std::error::Error>> {
+    let auto_start_tunnels = get_auto_start_tunnels_setting(&app.handle());
+    let auto_start_label = if auto_start_tunnels {
+        "✓ 启动软件时自动启动隧道"
+    } else {
+        "启动软件时自动启动隧道"
+    };
+
+    let show_item = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
+    let auto_start_item = MenuItemBuilder::with_id("auto_start_tunnels", auto_start_label).build(app)?;
+    let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
+
+    MenuBuilder::new(app)
+        .item(&show_item)
+        .separator()
+        .item(&auto_start_item)
+        .separator()
+        .item(&quit_item)
+        .build()
+        .map_err(Into::into)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -27,49 +96,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
-            let app_handle = app.handle().clone();
-            
-            // 获取自动启动隧道设置
-            let auto_start_tunnels = {
-                let app_data_dir = app_handle.path().app_data_dir().ok();
-                if let Some(dir) = app_data_dir {
-                    let config_path = dir.join("auto_start_tunnels.json");
-                    if config_path.exists() {
-                        if let Ok(content) = std::fs::read_to_string(&config_path) {
-                            if let Ok(config) = serde_json::from_str::<serde_json::Value>(&content) {
-                                config.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false)
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            };
-            
-            let show_item = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
-            let auto_start_item = MenuItemBuilder::with_id(
-                "auto_start_tunnels",
-                if auto_start_tunnels {
-                    "✓ 启动软件时自动启动隧道"
-                } else {
-                    "启动软件时自动启动隧道"
-                },
-            )
-            .build(app)?;
-            let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
-            let menu = MenuBuilder::new(app)
-                .item(&show_item)
-                .separator()
-                .item(&auto_start_item)
-                .separator()
-                .item(&quit_item)
-                .build()?;
+            let menu = build_tray_menu(app)?;
 
             let tray_icon = app
                 .default_window_icon()
@@ -79,7 +106,7 @@ pub fn run() {
             let _tray = TrayIconBuilder::new()
                 .icon(tray_icon)
                 .menu(&menu)
-                .on_menu_event(move |app, event| match event.id().as_ref() {
+                .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
@@ -88,45 +115,11 @@ pub fn run() {
                     }
                     "auto_start_tunnels" => {
                         let app_handle = app.clone();
-                        
-                        // 获取当前设置
-                        let current_setting = {
-                            let app_data_dir = app_handle.path().app_data_dir().ok();
-                            if let Some(dir) = app_data_dir {
-                                let config_path = dir.join("auto_start_tunnels.json");
-                                if config_path.exists() {
-                                    if let Ok(content) = std::fs::read_to_string(&config_path) {
-                                        if let Ok(config) = serde_json::from_str::<serde_json::Value>(&content) {
-                                            config.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false)
-                                        } else {
-                                            false
-                                        }
-                                    } else {
-                                        false
-                                    }
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
-                        };
-                        
-                        // 切换设置
+                        let current_setting = get_auto_start_tunnels_setting(&app_handle);
                         let new_setting = !current_setting;
-                        
-                        // 保存设置
-                        if let Some(app_data_dir) = app_handle.path().app_data_dir().ok() {
-                            if std::fs::create_dir_all(&app_data_dir).is_ok() {
-                                let config_path = app_data_dir.join("auto_start_tunnels.json");
-                                let config = serde_json::json!({
-                                    "enabled": new_setting
-                                });
-                                if std::fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap()).is_ok() {
-                                    // 发送事件到前端
-                                    let _ = app_handle.emit("auto-start-tunnels-changed", new_setting);
-                                }
-                            }
+
+                        if save_auto_start_tunnels_setting(&app_handle, new_setting) {
+                            let _ = app_handle.emit("auto-start-tunnels-changed", new_setting);
                         }
                     }
                     "quit" => {
@@ -198,19 +191,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             commands::process_guard::start_guard_monitor(app_handle.clone());
 
-            // 清理官方隧道的配置文件（只清理 g_*.ini 文件）
-            if let Ok(app_data_dir) = app_handle.path().app_data_dir() {
-                if let Ok(entries) = std::fs::read_dir(&app_data_dir) {
-                    for entry in entries.flatten() {
-                        if let Ok(file_name) = entry.file_name().into_string() {
-                            // 只删除官方隧道的配置文件（g_*.ini）
-                            if file_name.starts_with("g_") && file_name.ends_with(".ini") {
-                                let _ = std::fs::remove_file(entry.path());
-                            }
-                        }
-                    }
-                }
-            }
+            cleanup_official_tunnel_configs(&app_handle);
 
             Ok(())
         })
@@ -225,7 +206,6 @@ pub fn run() {
             commands::stop_frpc,
             commands::is_frpc_running,
             commands::get_running_tunnels,
-            commands::test_log_event,
             commands::is_autostart_enabled,
             commands::set_autostart,
             commands::get_auto_start_tunnels,

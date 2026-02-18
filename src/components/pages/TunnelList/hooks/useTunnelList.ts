@@ -7,7 +7,6 @@ import type { UnifiedTunnel } from "../types";
 
 export function useTunnelList() {
   const [tunnels, setTunnels] = useState<UnifiedTunnel[]>(() => {
-    // 将缓存的API隧道转换为统一格式
     return tunnelListCache.tunnels.map((t) => ({
       type: "api" as const,
       data: t,
@@ -19,7 +18,6 @@ export function useTunnelList() {
   const [error, setError] = useState("");
   const [runningTunnels, setRunningTunnels] = useState<Set<string>>(new Set());
 
-  // 使用ref保存最新的tunnels
   const tunnelsRef = useRef(tunnels);
 
   useEffect(() => {

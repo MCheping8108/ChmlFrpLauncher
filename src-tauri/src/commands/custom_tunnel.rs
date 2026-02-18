@@ -2,6 +2,7 @@ use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::process::{Command as StdCommand, Stdio};
 use std::thread;
 use tauri::{Emitter, Manager, State};
@@ -9,7 +10,11 @@ use tauri::{Emitter, Manager, State};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
-/// 自定义隧道信息
+const CUSTOM_TUNNEL_PREFIX: &str = "custom_";
+const CONFIG_FILE_PREFIX: &str = "z_";
+const CONFIG_FILE_EXT: &str = ".ini";
+const TUNNELS_LIST_FILE: &str = "custom_tunnels.json";
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CustomTunnel {
     pub id: String,
@@ -29,7 +34,79 @@ pub struct CustomTunnel {
     pub hashed_id: Option<i32>,
 }
 
-/// 保存自定义隧道配置
+fn get_app_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("获取应用目录失败: {}", e))
+}
+
+fn get_custom_tunnel_hash(tunnel_id: &str) -> i32 {
+    string_to_i32(&format!("{}{}", CUSTOM_TUNNEL_PREFIX, tunnel_id))
+}
+
+fn get_config_file_name(tunnel_id: &str) -> String {
+    format!("{}{}{}", CONFIG_FILE_PREFIX, tunnel_id, CONFIG_FILE_EXT)
+}
+
+fn get_frpc_path(app_dir: &PathBuf) -> PathBuf {
+    if cfg!(target_os = "windows") {
+        app_dir.join("frpc.exe")
+    } else {
+        app_dir.join("frpc")
+    }
+}
+
+fn spawn_log_reader(
+    app_handle: tauri::AppHandle,
+    reader: Box<dyn BufRead + Send>,
+    tunnel_id_hash: i32,
+    tunnel_id: String,
+    is_stderr: bool,
+) {
+    let thread_name = format!(
+        "custom-frpc-{}-{}",
+        if is_stderr { "stderr" } else { "stdout" },
+        tunnel_id
+    );
+
+    thread::Builder::new()
+        .name(thread_name)
+        .spawn(move || {
+            for line in reader.lines().flatten() {
+                let clean_line = strip_ansi_escapes::strip_str(&line);
+                let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
+
+                let guard_state = app_handle.state::<ProcessGuardState>();
+                let _ = tauri::async_runtime::block_on(async {
+                    crate::commands::process_guard::check_log_and_stop_guard(
+                        app_handle.clone(),
+                        tunnel_id_hash,
+                        clean_line.clone(),
+                        guard_state,
+                    )
+                    .await
+                });
+
+                let message = if is_stderr {
+                    format!("[ERR] {}", clean_line)
+                } else {
+                    clean_line
+                };
+
+                let _ = app_handle.emit(
+                    "frpc-log",
+                    LogMessage {
+                        tunnel_id: tunnel_id_hash,
+                        message,
+                        timestamp,
+                    },
+                );
+            }
+        })
+        .ok();
+}
+
 #[tauri::command]
 pub async fn save_custom_tunnel(
     app_handle: tauri::AppHandle,
@@ -42,11 +119,7 @@ pub async fn save_custom_tunnel(
         return Err("配置文件中未找到隧道名称".to_string());
     }
 
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("获取应用目录失败: {}", e))?;
-
+    let app_dir = get_app_dir(&app_handle)?;
     fs::create_dir_all(&app_dir).map_err(|e| format!("创建目录失败: {}", e))?;
 
     let mut created = Vec::with_capacity(split.tunnels.len());
@@ -67,7 +140,7 @@ pub async fn save_custom_tunnel(
 
         let parsed_info = parse_ini_config(&single_ini)?;
 
-        let config_file_name = format!("z_{}.ini", tunnel_name);
+        let config_file_name = get_config_file_name(&tunnel_name);
         let config_file_path = app_dir.join(&config_file_name);
 
         fs::write(&config_file_path, &single_ini)
@@ -87,26 +160,20 @@ pub async fn save_custom_tunnel(
             local_port: parsed_info.local_port,
             remote_port: parsed_info.remote_port,
             created_at: chrono::Local::now().to_rfc3339(),
-            hashed_id: Some(string_to_i32(&format!("custom_{}", tunnel_name))),
+            hashed_id: Some(get_custom_tunnel_hash(&tunnel_name)),
         };
 
         save_custom_tunnel_list(&app_handle, &custom_tunnel)?;
-
         created.push(custom_tunnel);
     }
 
     Ok(created)
 }
 
-/// 获取所有自定义隧道列表
 #[tauri::command]
 pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<CustomTunnel>, String> {
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("获取应用目录失败: {}", e))?;
-
-    let list_file = app_dir.join("custom_tunnels.json");
+    let app_dir = get_app_dir(&app_handle)?;
+    let list_file = app_dir.join(TUNNELS_LIST_FILE);
 
     if !list_file.exists() {
         return Ok(Vec::new());
@@ -118,29 +185,29 @@ pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<Cust
     let tunnels: Vec<CustomTunnel> =
         serde_json::from_str(&content).map_err(|e| format!("解析自定义隧道列表失败: {}", e))?;
 
-    let mut updated = Vec::with_capacity(tunnels.len());
-    for mut t in tunnels {
-        let config_path = app_dir.join(&t.config_file);
-        if let Ok(cfg) = fs::read_to_string(&config_path) {
-            if let Ok(parsed) = parse_ini_config(&cfg) {
-                t.server_addr = parsed.server_addr.or(t.server_addr);
-                t.server_port = parsed.server_port.or(t.server_port);
-                t.tunnels = if parsed.tunnel_names.is_empty() {
-                    t.tunnels
-                } else {
-                    parsed.tunnel_names
-                };
-                t.tunnel_type = parsed.tunnel_type.or(t.tunnel_type);
-                t.custom_domains = parsed.custom_domains.or(t.custom_domains);
-                t.subdomain = parsed.subdomain.or(t.subdomain);
-                t.local_ip = parsed.local_ip.or(t.local_ip);
-                t.local_port = parsed.local_port.or(t.local_port);
-                t.remote_port = parsed.remote_port.or(t.remote_port);
+    let updated = tunnels
+        .into_iter()
+        .map(|mut t| {
+            let config_path = app_dir.join(&t.config_file);
+            if let Ok(cfg) = fs::read_to_string(&config_path) {
+                if let Ok(parsed) = parse_ini_config(&cfg) {
+                    t.server_addr = parsed.server_addr.or(t.server_addr);
+                    t.server_port = parsed.server_port.or(t.server_port);
+                    if !parsed.tunnel_names.is_empty() {
+                        t.tunnels = parsed.tunnel_names;
+                    }
+                    t.tunnel_type = parsed.tunnel_type.or(t.tunnel_type);
+                    t.custom_domains = parsed.custom_domains.or(t.custom_domains);
+                    t.subdomain = parsed.subdomain.or(t.subdomain);
+                    t.local_ip = parsed.local_ip.or(t.local_ip);
+                    t.local_port = parsed.local_port.or(t.local_port);
+                    t.remote_port = parsed.remote_port.or(t.remote_port);
+                }
             }
-        }
-        t.hashed_id = Some(string_to_i32(&format!("custom_{}", t.id)));
-        updated.push(t);
-    }
+            t.hashed_id = Some(get_custom_tunnel_hash(&t.id));
+            t
+        })
+        .collect();
 
     Ok(updated)
 }
@@ -153,16 +220,13 @@ struct IniSplitResult {
 fn split_ini_config(content: &str) -> Result<IniSplitResult, String> {
     let mut common_lines: Vec<String> = Vec::new();
     let mut tunnels: Vec<(String, Vec<String>)> = Vec::new();
-
     let mut current_section: Option<String> = None;
 
     for raw in content.lines() {
         let trimmed = raw.trim();
 
-        if trimmed.starts_with('[') && trimmed.ends_with(']') {
-            let name = trimmed[1..trimmed.len() - 1].trim().to_string();
+        if let Some(name) = parse_section_header(trimmed) {
             current_section = Some(name.clone());
-
             if name == "common" {
                 common_lines.push(format!("[{}]", name));
             } else if !name.is_empty() {
@@ -178,8 +242,7 @@ fn split_ini_config(content: &str) -> Result<IniSplitResult, String> {
                     lines.push(raw.to_string());
                 }
             }
-            _ => {
-            }
+            _ => {}
         }
     }
 
@@ -187,57 +250,55 @@ fn split_ini_config(content: &str) -> Result<IniSplitResult, String> {
     let tunnels = tunnels
         .into_iter()
         .map(|(name, lines)| (name, lines.join("\n").trim().to_string()))
-        .collect::<Vec<_>>();
+        .collect();
 
     Ok(IniSplitResult { common, tunnels })
 }
 
-/// 获取自定义隧道配置文件内容
+fn parse_section_header(line: &str) -> Option<String> {
+    if line.starts_with('[') && line.ends_with(']') {
+        Some(line[1..line.len() - 1].trim().to_string())
+    } else {
+        None
+    }
+}
+
+fn parse_key_value(line: &str) -> Option<(&str, &str)> {
+    let pos = line.find('=')?;
+    Some((line[..pos].trim(), line[pos + 1..].trim()))
+}
+
 #[tauri::command]
 pub async fn get_custom_tunnel_config(
     app_handle: tauri::AppHandle,
     tunnel_id: String,
 ) -> Result<String, String> {
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("获取应用目录失败: {}", e))?;
-
-    let config_file_path = app_dir.join(format!("z_{}.ini", tunnel_id));
+    let app_dir = get_app_dir(&app_handle)?;
+    let config_file_path = app_dir.join(get_config_file_name(&tunnel_id));
 
     if !config_file_path.exists() {
         return Err("配置文件不存在".to_string());
     }
 
-    fs::read_to_string(&config_file_path)
-        .map_err(|e| format!("读取配置文件失败: {}", e))
+    fs::read_to_string(&config_file_path).map_err(|e| format!("读取配置文件失败: {}", e))
 }
 
-/// 更新自定义隧道配置
 #[tauri::command]
 pub async fn update_custom_tunnel(
     app_handle: tauri::AppHandle,
     tunnel_id: String,
     config_content: String,
 ) -> Result<CustomTunnel, String> {
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("获取应用目录失败: {}", e))?;
-
-    // 解析新的配置
+    let app_dir = get_app_dir(&app_handle)?;
     let parsed_info = parse_ini_config(&config_content)?;
 
-    // 配置文件路径
-    let config_file_name = format!("z_{}.ini", tunnel_id);
+    let config_file_name = get_config_file_name(&tunnel_id);
     let config_file_path = app_dir.join(&config_file_name);
 
-    // 写入新的配置内容
     fs::write(&config_file_path, &config_content)
         .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
-    // 获取现有的隧道信息以保留创建时间
-    let list_file = app_dir.join("custom_tunnels.json");
+    let list_file = app_dir.join(TUNNELS_LIST_FILE);
     let existing_tunnels: Vec<CustomTunnel> = if list_file.exists() {
         let content = fs::read_to_string(&list_file)
             .map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
@@ -253,7 +314,6 @@ pub async fn update_custom_tunnel(
         .map(|t| t.created_at.clone())
         .unwrap_or_else(|| chrono::Local::now().to_rfc3339());
 
-    // 创建更新后的隧道对象
     let updated_tunnel = CustomTunnel {
         id: tunnel_id.clone(),
         name: tunnel_id.clone(),
@@ -268,25 +328,20 @@ pub async fn update_custom_tunnel(
         local_port: parsed_info.local_port,
         remote_port: parsed_info.remote_port,
         created_at,
-        hashed_id: Some(string_to_i32(&format!("custom_{}", tunnel_id))),
+        hashed_id: Some(get_custom_tunnel_hash(&tunnel_id)),
     };
 
-    // 保存到列表
     save_custom_tunnel_list(&app_handle, &updated_tunnel)?;
-
     Ok(updated_tunnel)
 }
 
-/// 删除自定义隧道
 #[tauri::command]
 pub async fn delete_custom_tunnel(
     app_handle: tauri::AppHandle,
     tunnel_id: String,
     processes: State<'_, FrpcProcesses>,
 ) -> Result<(), String> {
-    // 停止隧道（如果正在运行）
-    let custom_tunnel_id = format!("custom_{}", tunnel_id);
-    let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
+    let tunnel_id_hash = get_custom_tunnel_hash(&tunnel_id);
 
     {
         let mut procs = processes
@@ -300,19 +355,14 @@ pub async fn delete_custom_tunnel(
         }
     }
 
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("获取应用目录失败: {}", e))?;
+    let app_dir = get_app_dir(&app_handle)?;
 
-    // 删除配置文件
-    let config_file = app_dir.join(format!("z_{}.ini", tunnel_id));
+    let config_file = app_dir.join(get_config_file_name(&tunnel_id));
     if config_file.exists() {
         fs::remove_file(&config_file).map_err(|e| format!("删除配置文件失败: {}", e))?;
     }
 
-    // 从列表中移除
-    let list_file = app_dir.join("custom_tunnels.json");
+    let list_file = app_dir.join(TUNNELS_LIST_FILE);
     if list_file.exists() {
         let content =
             fs::read_to_string(&list_file).map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
@@ -331,7 +381,6 @@ pub async fn delete_custom_tunnel(
     Ok(())
 }
 
-/// 启动自定义隧道
 #[tauri::command]
 pub async fn start_custom_tunnel(
     app_handle: tauri::AppHandle,
@@ -339,9 +388,7 @@ pub async fn start_custom_tunnel(
     processes: State<'_, FrpcProcesses>,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
-    // 生成一个唯一的进程ID
-    let custom_tunnel_id = format!("custom_{}", tunnel_id);
-    let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
+    let tunnel_id_hash = get_custom_tunnel_hash(&tunnel_id);
 
     {
         let procs = processes
@@ -353,22 +400,13 @@ pub async fn start_custom_tunnel(
         }
     }
 
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-
-    let frpc_path = if cfg!(target_os = "windows") {
-        app_dir.join("frpc.exe")
-    } else {
-        app_dir.join("frpc")
-    };
+    let app_dir = get_app_dir(&app_handle)?;
+    let frpc_path = get_frpc_path(&app_dir);
 
     if !frpc_path.exists() {
         return Err("frpc 未找到，请先下载".to_string());
     }
 
-    // Unix系统上确保有执行权限
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -380,14 +418,13 @@ pub async fn start_custom_tunnel(
         }
     }
 
-    let config_file = format!("z_{}.ini", tunnel_id);
+    let config_file = get_config_file_name(&tunnel_id);
     let config_path = app_dir.join(&config_file);
 
     if !config_path.exists() {
         return Err("配置文件不存在".to_string());
     }
 
-    // 启动 frpc 进程
     let mut cmd = StdCommand::new(&frpc_path);
     cmd.current_dir(&app_dir)
         .arg("-c")
@@ -395,7 +432,6 @@ pub async fn start_custom_tunnel(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    // Windows上隐藏控制台窗口
     #[cfg(target_os = "windows")]
     {
         cmd.creation_flags(0x08000000);
@@ -405,87 +441,37 @@ pub async fn start_custom_tunnel(
 
     let pid = child.id();
 
-    // 发送启动日志
     let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
     let _ = app_handle.emit(
         "frpc-log",
         LogMessage {
             tunnel_id: tunnel_id_hash,
-            message: format!("[I] [ChmlFrpLauncher] 自定义隧道 {} 进程已启动 (PID: {})", tunnel_id, pid),
+            message: format!(
+                "[I] [ChmlFrpLauncher] 自定义隧道 {} 进程已启动 (PID: {})",
+                tunnel_id, pid
+            ),
             timestamp,
         },
     );
 
-    // 捕获 stdout
     if let Some(stdout) = child.stdout.take() {
-        let app_handle_clone = app_handle.clone();
-        thread::Builder::new()
-            .name(format!("custom-frpc-stdout-{}", tunnel_id))
-            .spawn(move || {
-                let reader = BufReader::new(stdout);
-                for line in reader.lines().flatten() {
-                    let clean_line = strip_ansi_escapes::strip_str(&line);
-                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
-
-                    // 检查日志是否需要停止守护
-                    let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
-                    let _ = tauri::async_runtime::block_on(async {
-                        crate::commands::process_guard::check_log_and_stop_guard(
-                            app_handle_clone.clone(),
-                            tunnel_id_hash,
-                            clean_line.clone(),
-                            guard_state_for_check,
-                        )
-                        .await
-                    });
-
-                    let _ = app_handle_clone.emit(
-                        "frpc-log",
-                        LogMessage {
-                            tunnel_id: tunnel_id_hash,
-                            message: clean_line,
-                            timestamp,
-                        },
-                    );
-                }
-            })
-            .ok();
+        spawn_log_reader(
+            app_handle.clone(),
+            Box::new(BufReader::new(stdout)),
+            tunnel_id_hash,
+            tunnel_id.clone(),
+            false,
+        );
     }
 
-    // 捕获 stderr
     if let Some(stderr) = child.stderr.take() {
-        let app_handle_clone = app_handle.clone();
-        thread::Builder::new()
-            .name(format!("custom-frpc-stderr-{}", tunnel_id))
-            .spawn(move || {
-                let reader = BufReader::new(stderr);
-                for line in reader.lines().flatten() {
-                    let clean_line = strip_ansi_escapes::strip_str(&line);
-                    let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
-
-                    // 检查错误日志是否需要停止守护
-                    let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
-                    let _ = tauri::async_runtime::block_on(async {
-                        crate::commands::process_guard::check_log_and_stop_guard(
-                            app_handle_clone.clone(),
-                            tunnel_id_hash,
-                            clean_line.clone(),
-                            guard_state_for_check,
-                        )
-                        .await
-                    });
-
-                    let _ = app_handle_clone.emit(
-                        "frpc-log",
-                        LogMessage {
-                            tunnel_id: tunnel_id_hash,
-                            message: format!("[ERR] {}", clean_line),
-                            timestamp,
-                        },
-                    );
-                }
-            })
-            .ok();
+        spawn_log_reader(
+            app_handle.clone(),
+            Box::new(BufReader::new(stderr)),
+            tunnel_id_hash,
+            tunnel_id.clone(),
+            true,
+        );
     }
 
     {
@@ -506,15 +492,13 @@ pub async fn start_custom_tunnel(
     Ok(format!("自定义隧道已启动 (PID: {})", pid))
 }
 
-/// 停止自定义隧道
 #[tauri::command]
 pub async fn stop_custom_tunnel(
     tunnel_id: String,
     processes: State<'_, FrpcProcesses>,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
-    let custom_tunnel_id = format!("custom_{}", tunnel_id);
-    let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
+    let tunnel_id_hash = get_custom_tunnel_hash(&tunnel_id);
 
     let _ =
         crate::commands::process_guard::remove_guarded_process(tunnel_id_hash, guard_state, true)
@@ -541,14 +525,12 @@ pub async fn stop_custom_tunnel(
     }
 }
 
-/// 检查自定义隧道是否在运行
 #[tauri::command]
 pub async fn is_custom_tunnel_running(
     tunnel_id: String,
     processes: State<'_, FrpcProcesses>,
 ) -> Result<bool, String> {
-    let custom_tunnel_id = format!("custom_{}", tunnel_id);
-    let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
+    let tunnel_id_hash = get_custom_tunnel_hash(&tunnel_id);
 
     let mut procs = processes
         .processes
@@ -572,7 +554,6 @@ pub async fn is_custom_tunnel_running(
     }
 }
 
-/// INI配置解析结果
 struct IniParsedInfo {
     server_addr: Option<String>,
     server_port: Option<u16>,
@@ -585,97 +566,66 @@ struct IniParsedInfo {
     remote_port: Option<u16>,
 }
 
-/// 解析INI配置文件
 fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
-    let mut server_addr = None;
-    let mut server_port = None;
-    let mut tunnel_names = Vec::new();
-    let mut tunnel_type = None;
-    let mut custom_domains = None;
-    let mut subdomain = None;
-    let mut local_ip = None;
-    let mut local_port = None;
-    let mut remote_port = None;
+    let mut info = IniParsedInfo {
+        server_addr: None,
+        server_port: None,
+        tunnel_names: Vec::new(),
+        tunnel_type: None,
+        custom_domains: None,
+        subdomain: None,
+        local_ip: None,
+        local_port: None,
+        remote_port: None,
+    };
 
     let mut current_section = String::new();
-    let mut tunnel_count = 0;
 
     for line in content.lines() {
         let line = line.trim();
 
-        // 跳过空行和注释
         if line.is_empty() || line.starts_with('#') || line.starts_with(';') {
             continue;
         }
 
-        // 检测段落
-        if line.starts_with('[') && line.ends_with(']') {
-            current_section = line[1..line.len() - 1].to_string();
-
-            // 如果不是common段，则是隧道段
+        if let Some(section) = parse_section_header(line) {
+            current_section = section.clone();
             if current_section != "common" && !current_section.is_empty() {
-                tunnel_count += 1;
-                tunnel_names.push(current_section.clone());
+                info.tunnel_names.push(current_section.clone());
             }
             continue;
         }
 
-        // 解析键值对
-        if let Some(pos) = line.find('=') {
-            let key = line[..pos].trim();
-            let value = line[pos + 1..].trim();
-
-            if current_section == "common" {
-                match key {
-                    "server_addr" => server_addr = Some(value.to_string()),
-                    "server_port" => {
-                        server_port = value.parse::<u16>().ok();
-                    }
+        if let Some((key, value)) = parse_key_value(line) {
+            match current_section.as_str() {
+                "common" => match key {
+                    "server_addr" => info.server_addr = Some(value.to_string()),
+                    "server_port" => info.server_port = value.parse().ok(),
                     _ => {}
-                }
-            } else {
-                // 解析隧道段的配置
-                match key {
-                    "type" => tunnel_type = Some(value.to_string()),
-                    "custom_domains" => custom_domains = Some(value.to_string()),
-                    "subdomain" => subdomain = Some(value.to_string()),
-                    "local_ip" => local_ip = Some(value.to_string()),
-                    "local_port" => local_port = value.parse::<u16>().ok(),
-                    "remote_port" => remote_port = value.parse::<u16>().ok(),
+                },
+                _ if !current_section.is_empty() => match key {
+                    "type" => info.tunnel_type = Some(value.to_string()),
+                    "custom_domains" => info.custom_domains = Some(value.to_string()),
+                    "subdomain" => info.subdomain = Some(value.to_string()),
+                    "local_ip" => info.local_ip = Some(value.to_string()),
+                    "local_port" => info.local_port = value.parse().ok(),
+                    "remote_port" => info.remote_port = value.parse().ok(),
                     _ => {}
-                }
+                },
+                _ => {}
             }
         }
     }
 
-    if tunnel_count == 0 {
-        return Err("配置文件必须包含至少一个隧道段".to_string());
-    }
-
-    Ok(IniParsedInfo {
-        server_addr,
-        server_port,
-        tunnel_names,
-        tunnel_type,
-        custom_domains,
-        subdomain,
-        local_ip,
-        local_port,
-        remote_port,
-    })
+    Ok(info)
 }
 
-/// 保存自定义隧道到列表
 fn save_custom_tunnel_list(
     app_handle: &tauri::AppHandle,
     tunnel: &CustomTunnel,
 ) -> Result<(), String> {
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("获取应用目录失败: {}", e))?;
-
-    let list_file = app_dir.join("custom_tunnels.json");
+    let app_dir = get_app_dir(app_handle)?;
+    let list_file = app_dir.join(TUNNELS_LIST_FILE);
 
     let mut tunnels: Vec<CustomTunnel> = if list_file.exists() {
         let content =
@@ -685,7 +635,6 @@ fn save_custom_tunnel_list(
         Vec::new()
     };
 
-    // 如果已存在，则更新；否则添加
     if let Some(existing) = tunnels.iter_mut().find(|t| t.id == tunnel.id) {
         *existing = tunnel.clone();
     } else {
@@ -700,15 +649,11 @@ fn save_custom_tunnel_list(
     Ok(())
 }
 
-/// 将字符串转换为i32（用于进程ID）
 fn string_to_i32(s: &str) -> i32 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
     let mut hasher = DefaultHasher::new();
     s.hash(&mut hasher);
-    let hash = hasher.finish();
-
-    // 确保返回正数
-    (hash as i32).abs()
+    (hasher.finish() as i32).abs()
 }

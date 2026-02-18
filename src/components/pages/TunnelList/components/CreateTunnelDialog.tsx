@@ -51,7 +51,6 @@ export function CreateTunnelDialog({
   const [pinging, setPinging] = useState(false);
   const [pingError, setPingError] = useState(false);
 
-  // 表单数据
   const [formData, setFormData] = useState<TunnelFormData>({
     tunnelName: "",
     localIp: "127.0.0.1",
@@ -64,7 +63,6 @@ export function CreateTunnelDialog({
     extraParams: "",
   });
 
-  // 使用预加载的节点数据
   const nodes = preloadedNodes || [];
 
   // 生成随机隧道名称
@@ -314,7 +312,6 @@ export function CreateTunnelDialog({
         </DialogHeader>
 
         {step === 1 ? (
-          // 第一步：选择隧道类型和节点
           <div
             key="step1"
             className="flex-1 flex flex-col min-h-0 py-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
@@ -345,7 +342,6 @@ export function CreateTunnelDialog({
             />
           </div>
         ) : step === 2 ? (
-          // 第二步：查看节点详情
           <div
             key="step2"
             className="flex-1 flex flex-col min-h-0 pt-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
@@ -367,7 +363,6 @@ export function CreateTunnelDialog({
             </DialogFooter>
           </div>
         ) : (
-          // 第三步：填写隧道信息
           <form
             key="step3"
             onSubmit={handleSubmit}

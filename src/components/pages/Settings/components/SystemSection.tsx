@@ -1,4 +1,6 @@
 import { Settings2 } from "lucide-react";
+import { Select } from "@/components/ui/select";
+import type { FrpcLogLevel } from "../utils";
 import {
   Item,
   ItemContent,
@@ -15,6 +17,8 @@ interface SystemSectionProps {
   onToggleAutoCheckUpdate: (enabled: boolean) => void;
   closeToTrayEnabled: boolean;
   onToggleCloseToTray: (enabled: boolean) => void;
+  frpcLogLevel: FrpcLogLevel;
+  onChangeFrpcLogLevel: (value: FrpcLogLevel) => void;
   guardEnabled: boolean;
   guardLoading: boolean;
   onToggleGuard: (enabled: boolean) => void;
@@ -30,6 +34,8 @@ export function SystemSection({
   onToggleAutoCheckUpdate,
   closeToTrayEnabled,
   onToggleCloseToTray,
+  frpcLogLevel,
+  onChangeFrpcLogLevel,
   guardEnabled,
   guardLoading,
   onToggleGuard,
@@ -43,10 +49,7 @@ export function SystemSection({
         <span>系统</span>
       </div>
       <div className="rounded-lg bg-card overflow-hidden">
-        <Item
-          variant="outline"
-          className="border-0 border-b border-border/60 last:border-0"
-        >
+        <Item variant="outline" className="border-0 border-b border-border/60">
           <ItemContent>
             <ItemTitle>开机自启</ItemTitle>
             <ItemDescription className="text-xs">
@@ -134,7 +137,7 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+        <Item variant="outline" className="border-0 border-b border-border/60">
           <ItemContent>
             <ItemTitle>进程守护</ItemTitle>
             <ItemDescription className="text-xs">
@@ -159,6 +162,29 @@ export function SystemSection({
                 }`}
               />
             </button>
+          </ItemActions>
+        </Item>
+
+        <Item variant="outline" className="border-0 border-b border-border/60">
+          <ItemContent>
+            <ItemTitle>Frpc 日志等级</ItemTitle>
+            <ItemDescription className="text-xs">
+              控制 frpc 输出的日志详细程度
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <Select
+              options={[
+                { value: "trace", label: "trace" },
+                { value: "debug", label: "debug" },
+                { value: "info", label: "info" },
+                { value: "warn", label: "warn" },
+                { value: "error", label: "error" },
+              ]}
+              value={frpcLogLevel}
+              onChange={(value) => onChangeFrpcLogLevel(value as FrpcLogLevel)}
+              size="sm"
+            />
           </ItemActions>
         </Item>
 

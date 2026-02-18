@@ -1,8 +1,9 @@
 import { useMemo, useEffect, useState } from "react";
+import type { BackgroundType } from "@/components/App/hooks/useBackground";
 
 interface BackgroundLayerProps {
   backgroundImage: string | null;
-  backgroundType: "image" | "video" | null;
+  backgroundType: BackgroundType;
   videoSrc: string | null;
   videoLoadError: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;

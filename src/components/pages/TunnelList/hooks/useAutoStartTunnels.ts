@@ -10,10 +10,6 @@ interface UseAutoStartTunnelsProps {
   onToggle: (tunnel: UnifiedTunnel, enabled: boolean) => void;
 }
 
-/**
- * 自动启动隧道 hook
- * 在应用启动时，如果启用了自动启动设置，则启动所有隧道
- */
 export function useAutoStartTunnels({
   tunnels,
   loading,
@@ -38,19 +34,16 @@ export function useAutoStartTunnels({
   }, [onToggle]);
 
   useEffect(() => {
-    // 只在应用启动时执行一次
     if (hasAutoStartedRef.current) {
       return;
     }
 
-    // 等待隧道列表加载完成
     if (loading || tunnels.length === 0) {
       return;
     }
 
     const autoStart = async () => {
       try {
-        // 获取所有标记了自动启动的隧道列表
         const autoStartList =
           await autoStartTunnelsService.getAutoStartTunnels();
         if (autoStartList.length === 0) {
@@ -58,7 +51,6 @@ export function useAutoStartTunnels({
           return;
         }
 
-        // 检查是否有用户登录（对于 API 隧道）
         const user = getStoredUser();
         const currentTunnels = tunnelsRef.current;
         const hasApiTunnels = autoStartList.some(([type]) => type === "api");
@@ -73,10 +65,8 @@ export function useAutoStartTunnels({
           autoStartSet.add(`${tunnelType}_${tunnelId}`);
         }
 
-        // 延迟一下，确保界面已完全加载
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // 只启动标记了自动启动的隧道
         const currentRunningTunnels = runningTunnelsRef.current;
         const toggle = onToggleRef.current;
 
@@ -86,27 +76,23 @@ export function useAutoStartTunnels({
               ? `api_${tunnel.data.id}`
               : `custom_${tunnel.data.id}`;
 
-          // 如果隧道没有标记自动启动，跳过
           if (!autoStartSet.has(tunnelKey)) {
             continue;
           }
 
-          // 如果隧道已经在运行，跳过
           if (currentRunningTunnels.has(tunnelKey)) {
             continue;
           }
 
-          // 启动隧道（异步执行，不等待完成）
           toggle(tunnel, true);
 
-          // 在每个隧道之间添加小延迟，避免同时启动太多隧道
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
         hasAutoStartedRef.current = true;
       } catch (error) {
         console.error("[自动启动] 启动隧道失败:", error);
-        hasAutoStartedRef.current = true; // 即使出错也标记为已执行，避免重复尝试
+        hasAutoStartedRef.current = true;
       }
     };
 

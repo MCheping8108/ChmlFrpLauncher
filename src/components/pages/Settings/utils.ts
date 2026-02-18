@@ -45,6 +45,30 @@ export const getInitialBypassProxy = (): boolean => {
   return stored !== "false";
 };
 
+export type FrpcLogLevel = "trace" | "debug" | "info" | "warn" | "error";
+
+export const getInitialFrpcLogLevel = (): FrpcLogLevel => {
+  if (typeof window === "undefined") return "info";
+  const stored = localStorage.getItem("frpcLogLevel");
+  if (
+    stored === "trace" ||
+    stored === "debug" ||
+    stored === "info" ||
+    stored === "warn" ||
+    stored === "error"
+  ) {
+    return stored;
+  }
+  return "info";
+};
+
+export const getInitialIpv6OnlyNetwork = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem("ipv6OnlyNetwork");
+  if (stored === null) return false;
+  return stored === "true";
+};
+
 export const getInitialShowTitleBar = (): boolean => {
   if (typeof window === "undefined") return false;
   const stored = localStorage.getItem("showTitleBar");

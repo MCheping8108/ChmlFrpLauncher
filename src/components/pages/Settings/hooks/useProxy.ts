@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export interface ProxyConfig {
   enabled: boolean;
@@ -7,7 +7,6 @@ export interface ProxyConfig {
   port: string;
   username: string;
   password: string;
-  tcpMux: boolean;
   forceTls: boolean;
   kcpOptimization: boolean;
 }
@@ -19,31 +18,25 @@ const DEFAULT_PROXY_CONFIG: ProxyConfig = {
   port: "",
   username: "",
   password: "",
-  tcpMux: true,
   forceTls: false,
   kcpOptimization: false,
 };
 
 export function useProxy() {
-  const [proxyConfig, setProxyConfig] = useState<ProxyConfig>(
-    DEFAULT_PROXY_CONFIG
-  );
-
-  useEffect(() => {
+  const [proxyConfig, setProxyConfig] = useState<ProxyConfig>(() => {
+    if (typeof window === "undefined") return DEFAULT_PROXY_CONFIG;
     const saved = localStorage.getItem("frpc_proxy_config");
-    if (saved) {
-      try {
-        const config = JSON.parse(saved) as ProxyConfig;
-        // 为旧配置添加默认值
-        setProxyConfig({
-          ...DEFAULT_PROXY_CONFIG,
-          ...config,
-        });
-      } catch {
-        // 忽略解析错误
-      }
+    if (!saved) return DEFAULT_PROXY_CONFIG;
+    try {
+      const config = JSON.parse(saved) as ProxyConfig;
+      return {
+        ...DEFAULT_PROXY_CONFIG,
+        ...config,
+      };
+    } catch {
+      return DEFAULT_PROXY_CONFIG;
     }
-  }, []);
+  });
 
   const saveProxyConfig = (config: ProxyConfig) => {
     setProxyConfig(config);

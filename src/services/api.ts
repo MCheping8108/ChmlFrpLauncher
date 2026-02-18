@@ -49,6 +49,7 @@ export interface Tunnel {
   nodestate: string;
   ip: string;
   node_ip: string;
+  node_ipv6: string | null;
   server_port: number;
   node_token: string;
 }
@@ -74,6 +75,8 @@ interface ApiResponse<T> {
 }
 
 const isBrowser = typeof window !== "undefined";
+const NODE_UDP_CACHE_KEY = "node_udp_cache";
+const NODE_UDP_CACHE_TTL = 5 * 60 * 1000;
 
 // 简单的请求去重（针对短时间内重复发起相同请求的场景）
 const pendingRequests = new Map<string, Promise<unknown>>();
@@ -383,6 +386,35 @@ export interface Node {
   notes: string;
 }
 
+interface NodeUdpCache {
+  updatedAt: number;
+  nodes: Record<string, boolean>;
+}
+
+function readNodeUdpCache(): NodeUdpCache | null {
+  if (!isBrowser) return null;
+  const raw = localStorage.getItem(NODE_UDP_CACHE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as NodeUdpCache;
+    if (!parsed || typeof parsed.updatedAt !== "number" || !parsed.nodes) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeNodeUdpCache(cache: NodeUdpCache) {
+  if (!isBrowser) return;
+  localStorage.setItem(NODE_UDP_CACHE_KEY, JSON.stringify(cache));
+}
+
+function isNodeUdpCacheExpired(cache: NodeUdpCache): boolean {
+  return Date.now() - cache.updatedAt > NODE_UDP_CACHE_TTL;
+}
+
 export interface NodeInfo {
   id: number;
   name: string;
@@ -462,6 +494,31 @@ export async function fetchNodes(token?: string): Promise<Node[]> {
 
   if (Array.isArray(data)) return data;
   throw new Error("获取节点列表失败");
+}
+
+export async function getNodeUdpSupport(
+  nodeName: string,
+  token?: string,
+): Promise<boolean | null> {
+  const cache = readNodeUdpCache();
+  if (cache && !isNodeUdpCacheExpired(cache) && nodeName in cache.nodes) {
+    return cache.nodes[nodeName];
+  }
+
+  try {
+    const nodes = await fetchNodes(token);
+    const nodesMap: Record<string, boolean> = {};
+    nodes.forEach((node) => {
+      nodesMap[node.name] = node.udp === "true";
+    });
+    writeNodeUdpCache({ updatedAt: Date.now(), nodes: nodesMap });
+    if (nodeName in nodesMap) {
+      return nodesMap[nodeName];
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchNodeInfo(
