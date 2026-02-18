@@ -250,9 +250,7 @@ export function useTunnelProgress(
       });
 
       try {
-        // TLS 错误修复：由于现在使用独立配置文件，不再需要修改 frpc.ini
-        // 直接重启隧道即可，因为配置文件会在启动时重新生成
-
+        
         try {
           await frpcManager.stopTunnel(tunnelId);
           await new Promise((resolve) => setTimeout(resolve, 500));

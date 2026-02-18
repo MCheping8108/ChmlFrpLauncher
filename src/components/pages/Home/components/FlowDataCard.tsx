@@ -14,7 +14,7 @@ interface FlowDataCardProps {
   flowError: string;
 }
 
-// 生成默认的7天数据
+// 默认的7天流量数据
 function generateDefaultData() {
   const data = [];
   const today = new Date();
@@ -58,7 +58,7 @@ export function FlowDataCard({
     0,
   );
 
-  // 将流量数据转换为 MB
+  // 转换流量数据单位
   const chartData =
     flowData.length > 0
       ? flowData.map((item) => ({

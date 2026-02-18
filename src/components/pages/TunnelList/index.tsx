@@ -85,15 +85,12 @@ export function TunnelList({ user }: TunnelListProps) {
     onToggle: handleToggle,
   });
 
-  // 预加载节点数据并打开创建对话框
   const handleOpenCreateDialog = useCallback(async () => {
-    // 未登录时，直接打开自定义隧道对话框
     if (!user) {
       setCreateCustomDialogOpen(true);
       return;
     }
 
-    // 已登录时，获取节点列表并打开标准创建对话框
     try {
       setLoadingCreateDialog(true);
       const nodes = await fetchNodes();
@@ -108,7 +105,6 @@ export function TunnelList({ user }: TunnelListProps) {
     }
   }, [user]);
 
-  // 预加载节点数据并打开编辑对话框
   const handleOpenEditDialog = useCallback(async (tunnel: Tunnel) => {
     try {
       setLoadingEditDialog(true);

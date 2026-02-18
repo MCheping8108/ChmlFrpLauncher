@@ -120,13 +120,13 @@ pub struct TunnelConfig {
     pub server_addr: String,
     pub server_port: u16,
     pub node_token: String,
-    pub tunnel_type: String, // tcp, http, https
+    pub tunnel_type: String,
     pub local_ip: String,
     pub local_port: u16,
-    pub remote_port: Option<u16>, // tcp 类型使用
-    pub custom_domains: Option<String>, // http/https 类型使用
-    pub http_proxy: Option<String>, // 代理配置
-    pub log_level: String, // frpc 日志等级
-    pub force_tls: bool, // 强制 TLS
-    pub kcp_optimization: bool, // KCP 优化
+    pub remote_port: Option<u16>,
+    pub custom_domains: Option<String>,
+    pub http_proxy: Option<String>,
+    pub log_level: String,
+    pub force_tls: bool,
+    pub kcp_optimization: bool,
 }
