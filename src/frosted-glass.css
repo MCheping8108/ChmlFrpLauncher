@@ -51,11 +51,19 @@ body:has(.frosted-glass-enabled) [data-slot="dialog-content"] {
 }
 
 .frosted-glass-enabled [data-slot="item"][data-variant="outline"] {
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 .dark .frosted-glass-enabled [data-slot="item"][data-variant="outline"] {
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.frosted-glass-enabled [data-slot="item-separator"] {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark .frosted-glass-enabled [data-slot="item-separator"] {
+  background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* 毛玻璃效果 - CSS 变量（亮色模式）*/

@@ -7,6 +7,7 @@ import {
   ItemTitle,
   ItemDescription,
   ItemActions,
+  ItemSeparator,
 } from "@/components/ui/item";
 
 interface SystemSectionProps {
@@ -49,7 +50,7 @@ export function SystemSection({
         <span>系统</span>
       </div>
       <div className="rounded-lg bg-card overflow-hidden">
-        <Item variant="outline" className="border-0 border-b border-border/60">
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>开机自启</ItemTitle>
             <ItemDescription className="text-xs">
@@ -77,10 +78,9 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <Item
-          variant="outline"
-          className="border-0 border-b border-border/60 last:border-0"
-        >
+        <ItemSeparator />
+
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>启动时自动检测更新</ItemTitle>
             <ItemDescription className="text-xs">
@@ -107,10 +107,9 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <Item
-          variant="outline"
-          className="border-0 border-b border-border/60 last:border-0"
-        >
+        <ItemSeparator />
+
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>关闭窗口时最小化到托盘</ItemTitle>
             <ItemDescription className="text-xs">
@@ -137,7 +136,9 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <Item variant="outline" className="border-0 border-b border-border/60">
+        <ItemSeparator />
+
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>进程守护</ItemTitle>
             <ItemDescription className="text-xs">
@@ -165,7 +166,9 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <Item variant="outline" className="border-0 border-b border-border/60">
+        <ItemSeparator />
+
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>Frpc 日志等级</ItemTitle>
             <ItemDescription className="text-xs">
@@ -187,6 +190,8 @@ export function SystemSection({
             />
           </ItemActions>
         </Item>
+
+        <ItemSeparator />
 
         <Item variant="outline" className="border-0">
           <ItemContent>
