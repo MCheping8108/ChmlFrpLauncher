@@ -559,9 +559,16 @@ export function useTunnelProgress(
                   tunnel.node_ip && remotePort
                     ? `${tunnel.node_ip}:${remotePort}`
                     : "";
+                const normalizedIpv6 =
+                  typeof tunnel.node_ipv6 === "string"
+                    ? tunnel.node_ipv6.trim()
+                    : "";
                 const ipv6Link =
-                  tunnel.node_ipv6 && remotePort
-                    ? `[${tunnel.node_ipv6}]:${remotePort}`
+                  normalizedIpv6 &&
+                  normalizedIpv6 !== "null" &&
+                  normalizedIpv6 !== "undefined" &&
+                  remotePort
+                    ? `[${normalizedIpv6}]:${remotePort}`
                     : "";
 
                 let messageText = `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"启动成功`;
