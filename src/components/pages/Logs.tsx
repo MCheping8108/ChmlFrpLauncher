@@ -8,7 +8,10 @@ import { logStore } from "@/services/logStore";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { updateService } from "@/services/updateService";
-import { customTunnelService, type CustomTunnel } from "@/services/customTunnelService";
+import {
+  customTunnelService,
+  type CustomTunnel,
+} from "@/services/customTunnelService";
 
 type LogLevel = "software" | "error" | "warning" | "info" | "debug";
 
@@ -313,8 +316,11 @@ export function Logs() {
                 const logLevel = getLogLevel(log.message);
                 const colorClass = getLogColorClass(logLevel);
                 const tunnel = tunnels.find((t) => t.id === log.tunnel_id);
-                const customTunnel = customTunnels.find((t) => t.hashed_id === log.tunnel_id);
-                const tunnelName = tunnel?.name || customTunnel?.name || String(log.tunnel_id);
+                const customTunnel = customTunnels.find(
+                  (t) => t.hashed_id === log.tunnel_id,
+                );
+                const tunnelName =
+                  tunnel?.name || customTunnel?.name || String(log.tunnel_id);
                 const showTimestamp = logLevel === "software";
                 return (
                   <div

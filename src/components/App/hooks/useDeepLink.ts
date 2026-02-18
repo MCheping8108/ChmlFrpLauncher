@@ -210,11 +210,7 @@ export function useDeepLink(
   }, [handleDeepLinkInternal, isAppReady]);
 
   useEffect(() => {
-    if (
-      isAppReady &&
-      pendingDeepLinkRef.current &&
-      user?.usertoken
-    ) {
+    if (isAppReady && pendingDeepLinkRef.current && user?.usertoken) {
       const pendingData = pendingDeepLinkRef.current;
       pendingDeepLinkRef.current = null;
       setTimeout(() => {

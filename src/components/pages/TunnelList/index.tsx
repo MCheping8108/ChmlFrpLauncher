@@ -63,19 +63,14 @@ export function TunnelList({ user }: TunnelListProps) {
   );
 
   const { tunnelProgress, setTunnelProgress, timeoutRefs, successTimeoutRefs } =
-    useTunnelProgress(
-      apiTunnels,
-      runningTunnels,
-      setRunningTunnels,
-    );
+    useTunnelProgress(apiTunnels, runningTunnels, setRunningTunnels);
 
-  const { togglingTunnels, handleToggle } =
-    useTunnelToggle({
-      setTunnelProgress,
-      setRunningTunnels,
-      timeoutRefs,
-      successTimeoutRefs,
-    });
+  const { togglingTunnels, handleToggle } = useTunnelToggle({
+    setTunnelProgress,
+    setRunningTunnels,
+    timeoutRefs,
+    successTimeoutRefs,
+  });
 
   // 自动启动隧道
   useAutoStartTunnels({

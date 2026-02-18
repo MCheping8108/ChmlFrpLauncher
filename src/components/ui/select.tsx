@@ -42,10 +42,7 @@ export function Select({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (
-        selectRef.current &&
-        selectRef.current.contains(target)
-      ) {
+      if (selectRef.current && selectRef.current.contains(target)) {
         return;
       }
       if (menuRef.current && menuRef.current.contains(target)) {

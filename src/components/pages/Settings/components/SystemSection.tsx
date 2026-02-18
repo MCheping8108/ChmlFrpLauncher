@@ -49,10 +49,7 @@ export function SystemSection({
         <span>系统</span>
       </div>
       <div className="rounded-lg bg-card overflow-hidden">
-        <Item
-          variant="outline"
-          className="border-0 border-b border-border/60"
-        >
+        <Item variant="outline" className="border-0 border-b border-border/60">
           <ItemContent>
             <ItemTitle>开机自启</ItemTitle>
             <ItemDescription className="text-xs">
@@ -185,9 +182,7 @@ export function SystemSection({
                 { value: "error", label: "error" },
               ]}
               value={frpcLogLevel}
-              onChange={(value) =>
-                onChangeFrpcLogLevel(value as FrpcLogLevel)
-              }
+              onChange={(value) => onChangeFrpcLogLevel(value as FrpcLogLevel)}
               size="sm"
             />
           </ItemActions>

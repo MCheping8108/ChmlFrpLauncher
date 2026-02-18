@@ -85,8 +85,16 @@ export class FrpcManager {
       tunnel_type: tunnel.type,
       local_ip: tunnel.localip,
       local_port: tunnel.nport,
-      remote_port: tunnel.type === "tcp" ? (tunnel.dorp ? parseInt(tunnel.dorp) : undefined) : undefined,
-      custom_domains: tunnel.type === "http" || tunnel.type === "https" ? tunnel.dorp : undefined,
+      remote_port:
+        tunnel.type === "tcp"
+          ? tunnel.dorp
+            ? parseInt(tunnel.dorp)
+            : undefined
+          : undefined,
+      custom_domains:
+        tunnel.type === "http" || tunnel.type === "https"
+          ? tunnel.dorp
+          : undefined,
       http_proxy: httpProxy,
       log_level: localStorage.getItem("frpcLogLevel") || "info",
       force_tls: forceTls,

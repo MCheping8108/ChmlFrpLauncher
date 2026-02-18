@@ -139,7 +139,9 @@ export function NetworkSection({
                 ]}
                 value={proxyConfig.type}
                 onChange={(value: string | number) =>
-                  updateProxyConfig({ type: String(value) as "http" | "socks5" })
+                  updateProxyConfig({
+                    type: String(value) as "http" | "socks5",
+                  })
                 }
                 size="sm"
               />
@@ -220,18 +222,15 @@ export function NetworkSection({
           <ItemContent>
             <ItemTitle className="flex items-center gap-1.5">
               强制 TLS
-                <Tooltip>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="max-w-xs text-balance"
-                >
+                <TooltipContent side="top" className="max-w-xs text-balance">
                   建议在频繁出现Frp连接被拦截的情况下开启
                 </TooltipContent>
               </Tooltip>
-              </ItemTitle>
+            </ItemTitle>
             <ItemDescription className="text-xs">
               强制使用 TLS 加密与节点连接
             </ItemDescription>
@@ -268,10 +267,7 @@ export function NetworkSection({
                 <TooltipTrigger asChild>
                   <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="max-w-xs text-balance"
-                >
+                <TooltipContent side="top" className="max-w-xs text-balance">
                   此功能通过浪费1.2~1.5倍带宽和系统占用的代价以降低延迟，仅建议游戏联机、因为网络问题出现严重丢包/卡顿的情况下开启。其余情况开启可能反而造成负面效果
                 </TooltipContent>
               </Tooltip>

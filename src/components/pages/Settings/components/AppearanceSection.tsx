@@ -463,10 +463,7 @@ export function AppearanceSection({
           </>
         )}
 
-        <Item
-          variant="outline"
-          className="border-0 border-t border-border/60"
-        >
+        <Item variant="outline" className="border-0 border-t border-border/60">
           <ItemContent>
             <ItemTitle>音效</ItemTitle>
             <ItemDescription className="text-xs">
@@ -478,10 +475,7 @@ export function AppearanceSection({
               onClick={() => {
                 const newValue = !tunnelSoundEnabled;
                 setTunnelSoundEnabled(newValue);
-                localStorage.setItem(
-                  "tunnelSoundEnabled",
-                  newValue.toString(),
-                );
+                localStorage.setItem("tunnelSoundEnabled", newValue.toString());
               }}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 tunnelSoundEnabled
