@@ -6,6 +6,7 @@ import {
   ItemTitle,
   ItemDescription,
   ItemActions,
+  ItemSeparator,
 } from "@/components/ui/item";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +69,7 @@ export function NetworkSection({
           </ItemActions>
         </Item>
 
-        <div className="border-t border-border/50" />
+        <ItemSeparator className="opacity-50" />
 
         <Item variant="outline" className="border-0">
           <ItemContent>
@@ -96,6 +97,8 @@ export function NetworkSection({
             </button>
           </ItemActions>
         </Item>
+
+        <ItemSeparator />
 
         <Item variant="outline" className="border-0">
           <ItemContent>
@@ -216,7 +219,7 @@ export function NetworkSection({
           </div>
         )}
 
-        <div className="border-t border-border/50" />
+        <ItemSeparator />
 
         <Item variant="outline" className="border-0">
           <ItemContent>
@@ -257,7 +260,7 @@ export function NetworkSection({
           </ItemActions>
         </Item>
 
-        <div className="border-t border-border/50" />
+        <ItemSeparator />
 
         <Item variant="outline" className="border-0">
           <ItemContent>

@@ -3,6 +3,7 @@ import type { BackgroundType } from "@/components/App/hooks/useBackground";
 
 interface BackgroundLayerProps {
   backgroundImage: string | null;
+  imageSrc: string | null;
   backgroundType: BackgroundType;
   videoSrc: string | null;
   videoLoadError: boolean;
@@ -22,6 +23,7 @@ interface BackgroundLayerProps {
  */
 export function BackgroundLayer({
   backgroundImage,
+  imageSrc,
   backgroundType,
   videoSrc,
   videoLoadError,
@@ -121,11 +123,11 @@ export function BackgroundLayer({
       className="absolute inset-0"
       style={{ zIndex: 0, pointerEvents: "none" }}
     >
-      {backgroundType === "image" && backgroundImage && (
+      {backgroundType === "image" && imageSrc && (
         <div
           className="absolute inset-0 w-full h-full rounded-[12px]"
           style={{
-            backgroundImage: `url(${backgroundImage})`,
+            backgroundImage: `url(${imageSrc})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",

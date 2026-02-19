@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { open } from "@tauri-apps/plugin-dialog";
-import { readFile } from "@tauri-apps/plugin-fs";
 import {
   getInitialBackgroundImage,
   getInitialBackgroundOverlayOpacity,
   getInitialBackgroundBlur,
-  getMimeType,
   isVideoFile,
 } from "../utils";
 
@@ -91,22 +89,23 @@ export function useBackgroundImage() {
             });
           }
         } else {
-          const fileData = await readFile(selected);
-          const uint8Array = new Uint8Array(fileData);
-
-          let binaryString = "";
-          for (let i = 0; i < uint8Array.length; i++) {
-            binaryString += String.fromCharCode(uint8Array[i]);
+          try {
+            const { invoke } = await import("@tauri-apps/api/core");
+            const copiedPath = await invoke<string>("copy_background_image", {
+              sourcePath: selected,
+            });
+            const imagePath = `app://${copiedPath}`;
+            setBackgroundImage(imagePath);
+            toast.success("背景图设置成功", {
+              duration: 2000,
+            });
+          } catch (error) {
+            const errorMsg =
+              error instanceof Error ? error.message : String(error);
+            toast.error(`复制图片文件失败: ${errorMsg}`, {
+              duration: 3000,
+            });
           }
-
-          const base64 = btoa(binaryString);
-          const mimeType = getMimeType(selected);
-          const dataUrl = `data:${mimeType};base64,${base64}`;
-
-          setBackgroundImage(dataUrl);
-          toast.success("背景图设置成功", {
-            duration: 2000,
-          });
         }
       }
     } catch (error) {

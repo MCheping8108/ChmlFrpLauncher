@@ -127,7 +127,7 @@ pub fn run() {
                     }
                     _ => {}
                 })
-                .on_tray_icon_event(|tray, event| {
+                .on_tray_icon_event(move |tray, event| {
                     if let TrayIconEvent::Click {
                         button: tauri::tray::MouseButton::Left,
                         ..
@@ -135,12 +135,28 @@ pub fn run() {
                     {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
-                            } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
+                            // 使用异步方式处理窗口显示/隐藏以避免Windows上的竞态条件
+                             tauri::async_runtime::spawn(async move {
+                                 // 短暂延时确保系统状态稳定
+                                 tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                                 
+                                 // 获取当前窗口状态并相应处理
+                                 match window.is_visible() {
+                                     Ok(true) => {
+                                         // 窗口可见，将其隐藏
+                                         let _ = window.hide();
+                                     }
+                                     Ok(false) => {
+                                         // 窗口不可见，将其显示并聚焦
+                                         let _ = window.show();
+                                     }
+                                     Err(_) => {
+                                         // 如果无法获取窗口状态，默认显示窗口
+                                         let _ = window.show();
+                                         let _ = window.set_focus();
+                                     }
+                                 }
+                             });
                         }
                     }
                 })
@@ -225,6 +241,7 @@ pub fn run() {
             commands::stop_custom_tunnel,
             commands::is_custom_tunnel_running,
             commands::copy_background_video,
+            commands::copy_background_image,
             commands::get_background_video_path,
             commands::process_guard::set_process_guard_enabled,
             commands::process_guard::get_process_guard_enabled,

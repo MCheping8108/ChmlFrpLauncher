@@ -43,6 +43,7 @@ function App() {
   const appContainerRef = useRef<HTMLDivElement>(null);
   const {
     backgroundImage,
+    imageSrc,
     overlayOpacity,
     blur,
     effectType,
@@ -162,6 +163,7 @@ function App() {
       >
         <BackgroundLayer
           backgroundImage={backgroundImage}
+          imageSrc={imageSrc}
           backgroundType={backgroundType}
           videoSrc={videoSrc}
           videoLoadError={videoLoadError}

@@ -6,6 +6,7 @@ import {
   ItemTitle,
   ItemDescription,
   ItemActions,
+  ItemSeparator,
 } from "@/components/ui/item";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -130,10 +131,7 @@ export function AppearanceSection({
         <span>个性化</span>
       </div>
       <div className="rounded-lg bg-card overflow-hidden">
-        <Item
-          variant="outline"
-          className="border-0 border-b border-border/60 last:border-0"
-        >
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>跟随系统主题</ItemTitle>
             <ItemDescription className="text-xs">
@@ -160,44 +158,43 @@ export function AppearanceSection({
           </ItemActions>
         </Item>
 
-        {!followSystem && (
-          <Item
-            variant="outline"
-            className="border-0 border-b border-border/60 last:border-0"
-          >
-            <ItemContent>
-              <ItemTitle>主题</ItemTitle>
-              <ItemDescription className="text-xs">
-                {theme === "dark" ? "深色模式" : "浅色模式"}
-              </ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <button
-                onClick={(e) =>
-                  toggleTheme(theme === "dark" ? "light" : "dark", e)
-                }
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                  theme === "dark"
-                    ? "bg-foreground"
-                    : "bg-muted dark:bg-foreground/12"
-                } cursor-pointer`}
-                role="switch"
-                aria-checked={theme === "dark"}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
-                    theme === "dark" ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </ItemActions>
-          </Item>
-        )}
+        {!followSystem ? (
+          <>
+            <ItemSeparator />
+            <Item variant="outline" className="border-0">
+              <ItemContent>
+                <ItemTitle>主题</ItemTitle>
+                <ItemDescription className="text-xs">
+                  {theme === "dark" ? "深色模式" : "浅色模式"}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={(e) =>
+                    toggleTheme(theme === "dark" ? "light" : "dark", e)
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
+                    theme === "dark"
+                      ? "bg-foreground"
+                      : "bg-muted dark:bg-foreground/12"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={theme === "dark"}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
+                      theme === "dark" ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+          </>
+        ) : null}
 
-        <Item
-          variant="outline"
-          className="border-0 border-b border-border/60 last:border-0"
-        >
+        <ItemSeparator className="opacity-50" />
+
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>侧边栏样式</ItemTitle>
             <ItemDescription className="text-xs">
@@ -220,36 +217,38 @@ export function AppearanceSection({
 
         {/* 只在 macOS 上显示顶部栏开关，悬浮菜单模式下隐藏 */}
         {isMacOS && sidebarMode !== "floating" && (
-          <Item
-            variant="outline"
-            className="border-0 border-b border-border/60"
-          >
-            <ItemContent>
-              <ItemTitle>显示顶部栏</ItemTitle>
-              <ItemDescription className="text-xs">
-                显示顶部标题栏（关闭时，三色按钮将显示在侧边栏顶部）
-              </ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <button
-                onClick={() => setShowTitleBar(!showTitleBar)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                  showTitleBar
-                    ? "bg-foreground"
-                    : "bg-muted dark:bg-foreground/12"
-                } cursor-pointer`}
-                role="switch"
-                aria-checked={showTitleBar}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
-                    showTitleBar ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </ItemActions>
-          </Item>
+          <>
+            <ItemSeparator />
+            <Item variant="outline" className="border-0">
+              <ItemContent>
+                <ItemTitle>显示顶部栏</ItemTitle>
+                <ItemDescription className="text-xs">
+                  显示顶部标题栏（关闭时，三色按钮将显示在侧边栏顶部）
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => setShowTitleBar(!showTitleBar)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
+                    showTitleBar
+                      ? "bg-foreground"
+                      : "bg-muted dark:bg-foreground/12"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={showTitleBar}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
+                      showTitleBar ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+          </>
         )}
+
+        <ItemSeparator />
 
         <Item variant="outline" className="border-0">
           <ItemContent>
@@ -292,10 +291,8 @@ export function AppearanceSection({
 
         {backgroundImage && (
           <>
-            <Item
-              variant="outline"
-              className="border-0 border-t border-border/60"
-            >
+            <ItemSeparator />
+            <Item variant="outline" className="border-0">
               <ItemContent>
                 <ItemTitle>视觉效果</ItemTitle>
                 <ItemDescription className="text-xs">
@@ -323,10 +320,8 @@ export function AppearanceSection({
               </ItemActions>
             </Item>
 
-            <Item
-              variant="outline"
-              className="border-0 border-t border-border/60"
-            >
+            <ItemSeparator />
+            <Item variant="outline" className="border-0">
               <ItemContent>
                 <ItemTitle>遮罩透明度</ItemTitle>
                 <ItemDescription className="text-xs">
@@ -355,6 +350,7 @@ export function AppearanceSection({
               </ItemActions>
             </Item>
 
+            <ItemSeparator />
             <Item variant="outline" className="border-0">
               <ItemContent>
                 <ItemTitle>模糊度</ItemTitle>
@@ -386,10 +382,8 @@ export function AppearanceSection({
 
         {isVideo && (
           <>
-            <Item
-              variant="outline"
-              className="border-0 border-t border-border/60"
-            >
+            <ItemSeparator />
+            <Item variant="outline" className="border-0">
               <ItemContent>
                 <ItemTitle>启动声音</ItemTitle>
                 <ItemDescription className="text-xs">
@@ -425,45 +419,50 @@ export function AppearanceSection({
             </Item>
 
             {videoStartSound && (
-              <Item variant="outline" className="border-0">
-                <ItemContent>
-                  <ItemTitle>音量</ItemTitle>
-                  <ItemDescription className="text-xs">
-                    调整视频声音的音量 ({videoVolume}%)
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  <div className="flex items-center gap-3 w-48">
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={videoVolume}
-                      onChange={(e) => {
-                        const newValue = parseInt(e.target.value, 10);
-                        setVideoVolume(newValue);
-                        localStorage.setItem(
-                          "videoVolume",
-                          newValue.toString(),
-                        );
-                        window.dispatchEvent(new Event("videoVolumeChanged"));
-                      }}
-                      className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
-                      style={{
-                        background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${videoVolume}%, var(--muted) ${videoVolume}%, var(--muted) 100%)`,
-                      }}
-                    />
-                    <span className="text-xs text-muted-foreground w-10 text-right">
-                      {videoVolume}%
-                    </span>
-                  </div>
-                </ItemActions>
-              </Item>
+              <>
+                <ItemSeparator />
+                <Item variant="outline" className="border-0">
+                  <ItemContent>
+                    <ItemTitle>音量</ItemTitle>
+                    <ItemDescription className="text-xs">
+                      调整视频声音的音量 ({videoVolume}%)
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <div className="flex items-center gap-3 w-48">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={videoVolume}
+                        onChange={(e) => {
+                          const newValue = parseInt(e.target.value, 10);
+                          setVideoVolume(newValue);
+                          localStorage.setItem(
+                            "videoVolume",
+                            newValue.toString(),
+                          );
+                          window.dispatchEvent(new Event("videoVolumeChanged"));
+                        }}
+                        className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                        style={{
+                          background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${videoVolume}%, var(--muted) ${videoVolume}%, var(--muted) 100%)`,
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground w-10 text-right">
+                        {videoVolume}%
+                      </span>
+                    </div>
+                  </ItemActions>
+                </Item>
+              </>
             )}
           </>
         )}
 
-        <Item variant="outline" className="border-0 border-t border-border/60">
+        <ItemSeparator />
+
+        <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>音效</ItemTitle>
             <ItemDescription className="text-xs">

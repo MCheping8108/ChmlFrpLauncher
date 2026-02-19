@@ -4,12 +4,15 @@ import type { EffectType } from "@/components/pages/Settings/utils";
 import {
   getInitialVideoStartSound,
   getInitialVideoVolume,
+  getBackgroundType,
+  getMimeType,
 } from "@/components/pages/Settings/utils";
 
 export type BackgroundType = "image" | "video" | null;
 
 export interface UseBackgroundReturn {
   backgroundImage: string | null;
+  imageSrc: string | null;
   overlayOpacity: number;
   blur: number;
   effectType: EffectType;
@@ -65,17 +68,10 @@ export function useBackground(): UseBackgroundReturn {
   );
   const hasPlayedFirstLoopRef = useRef(false);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   const backgroundType = useMemo(() => {
-    if (!backgroundImage) return null;
-    if (
-      backgroundImage.startsWith("data:video/") ||
-      backgroundImage.startsWith("file://") ||
-      backgroundImage.startsWith("app://")
-    )
-      return "video";
-    if (backgroundImage.startsWith("data:image/")) return "image";
-    return "image";
+    return getBackgroundType(backgroundImage);
   }, [backgroundImage]);
 
   useEffect(() => {
@@ -197,7 +193,7 @@ export function useBackground(): UseBackgroundReturn {
             }
             if (!isMounted) return;
 
-            const blob = new Blob([fileData], { type: "video/mp4" });
+            const blob = new Blob([fileData], { type: getMimeType(filePath) });
             const blobUrl = URL.createObjectURL(blob);
             if (currentBlobUrl) {
               URL.revokeObjectURL(currentBlobUrl);
@@ -233,7 +229,7 @@ export function useBackground(): UseBackgroundReturn {
             }
             if (!isMounted) return;
 
-            const blob = new Blob([fileData], { type: "video/mp4" });
+            const blob = new Blob([fileData], { type: getMimeType(filePath) });
             const blobUrl = URL.createObjectURL(blob);
             if (currentBlobUrl) {
               URL.revokeObjectURL(currentBlobUrl);
@@ -270,6 +266,60 @@ export function useBackground(): UseBackgroundReturn {
     };
 
     loadVideo();
+
+    return () => {
+      isMounted = false;
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
+      }
+    };
+  }, [backgroundType, backgroundImage]);
+
+  useEffect(() => {
+    let currentBlobUrl: string | null = null;
+    let isMounted = true;
+
+    const loadImage = async () => {
+      if (backgroundType === "image" && backgroundImage) {
+        if (
+          backgroundImage.startsWith("app://") ||
+          backgroundImage.startsWith("file://")
+        ) {
+          const filePath = backgroundImage
+            .replace("app://", "")
+            .replace("file://", "");
+          try {
+            const fileData = await readFile(filePath);
+            if (!fileData || fileData.length === 0) {
+              throw new Error("File is empty");
+            }
+            if (!isMounted) return;
+
+            const blob = new Blob([fileData], { type: getMimeType(filePath) });
+            const blobUrl = URL.createObjectURL(blob);
+            if (currentBlobUrl) {
+              URL.revokeObjectURL(currentBlobUrl);
+            }
+            currentBlobUrl = blobUrl;
+            setImageSrc(blobUrl);
+          } catch {
+            if (!isMounted) return;
+
+            if (currentBlobUrl) {
+              URL.revokeObjectURL(currentBlobUrl);
+              currentBlobUrl = null;
+            }
+            setImageSrc(null);
+          }
+        } else {
+          setImageSrc(backgroundImage);
+        }
+      } else {
+        setImageSrc(null);
+      }
+    };
+
+    loadImage();
 
     return () => {
       isMounted = false;
@@ -436,6 +486,7 @@ export function useBackground(): UseBackgroundReturn {
 
   return {
     backgroundImage,
+    imageSrc,
     overlayOpacity,
     blur,
     effectType,
