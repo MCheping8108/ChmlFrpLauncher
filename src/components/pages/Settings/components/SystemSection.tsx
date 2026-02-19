@@ -166,7 +166,7 @@ export function SystemSection({
           </ItemActions>
         </Item>
 
-        <ItemSeparator />
+        <ItemSeparator className="opacity-50" />
 
         <Item variant="outline" className="border-0">
           <ItemContent>
