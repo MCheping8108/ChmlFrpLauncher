@@ -6,6 +6,7 @@ class LogStore {
   private logs: LogMessage[] = [];
   private listeners: Set<LogListener> = new Set();
   private isListening = false;
+  private maxLogs = 5000;
 
   async startListening() {
     if (this.isListening) {
@@ -16,6 +17,7 @@ class LogStore {
 
     await frpcManager.listenToLogs((log: LogMessage) => {
       this.logs.push(log);
+      this.trimLogs();
       this.notifyListeners();
     });
   }
@@ -40,6 +42,7 @@ class LogStore {
 
   addLog(log: LogMessage) {
     this.logs.push(log);
+    this.trimLogs();
     this.notifyListeners();
   }
 
@@ -48,6 +51,12 @@ class LogStore {
     this.listeners.forEach((listener) => {
       listener(logsCopy);
     });
+  }
+
+  private trimLogs() {
+    if (this.logs.length > this.maxLogs) {
+      this.logs = this.logs.slice(-this.maxLogs);
+    }
   }
 }
 

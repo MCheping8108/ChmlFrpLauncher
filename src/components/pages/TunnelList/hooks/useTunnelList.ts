@@ -43,25 +43,44 @@ export function useTunnelList() {
 
       setTunnels(allTunnels);
       tunnelListCache.tunnels = apiTunnels;
+      setLoading(false);
 
-      // 检查运行状态
       const running = new Set<string>();
+      const withTimeout = (promise: Promise<boolean>, timeoutMs: number) =>
+        new Promise<boolean>((resolve) => {
+          const timer = setTimeout(() => resolve(false), timeoutMs);
+          promise
+            .then((value) => {
+              clearTimeout(timer);
+              resolve(value);
+            })
+            .catch(() => {
+              clearTimeout(timer);
+              resolve(false);
+            });
+        });
 
-      for (const tunnel of allTunnels) {
-        if (tunnel.type === "api") {
-          const isRunning = await frpcManager.isTunnelRunning(tunnel.data.id);
-          if (isRunning) {
-            running.add(`api_${tunnel.data.id}`);
+      await Promise.all(
+        allTunnels.map(async (tunnel) => {
+          if (tunnel.type === "api") {
+            const isRunning = await withTimeout(
+              frpcManager.isTunnelRunning(tunnel.data.id),
+              3000,
+            );
+            if (isRunning) {
+              running.add(`api_${tunnel.data.id}`);
+            }
+          } else {
+            const isRunning = await withTimeout(
+              customTunnelService.isCustomTunnelRunning(tunnel.data.id),
+              3000,
+            );
+            if (isRunning) {
+              running.add(`custom_${tunnel.data.id}`);
+            }
           }
-        } else {
-          const isRunning = await customTunnelService.isCustomTunnelRunning(
-            tunnel.data.id,
-          );
-          if (isRunning) {
-            running.add(`custom_${tunnel.data.id}`);
-          }
-        }
-      }
+        }),
+      );
       setRunningTunnels(running);
     } catch (err) {
       const message = err instanceof Error ? err.message : "获取隧道列表失败";

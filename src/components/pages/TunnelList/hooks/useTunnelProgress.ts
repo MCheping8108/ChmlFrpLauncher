@@ -439,6 +439,10 @@ export function useTunnelProgress(
     const unsubscribe = logStore.subscribe((logs: LogMessage[]) => {
       if (logs.length === 0) return;
 
+      if (processedLogsCountRef.current > logs.length) {
+        processedLogsCountRef.current = logs.length;
+      }
+
       const startIndex = processedLogsCountRef.current;
       if (startIndex >= logs.length) return;
 
