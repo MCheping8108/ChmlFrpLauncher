@@ -49,6 +49,7 @@ export function TunnelCard({
     return localStorage.getItem("ipv6OnlyNetwork") === "true";
   });
   const isIpv6Blocked = isApi && ipv6OnlyNetwork && !tunnel.data.node_ipv6;
+  const isNodeOffline = isApi && tunnel.data.nodestate !== "online";
 
   const extractFirstDomain = (raw?: string) => {
     if (!raw) return "";
@@ -236,7 +237,7 @@ export function TunnelCard({
                       <input
                         type="checkbox"
                         checked={isRunning}
-                        disabled={isToggling || isIpv6Blocked}
+                        disabled={isToggling || isIpv6Blocked || isNodeOffline}
                         onChange={(e) => onToggle(tunnel, e.target.checked)}
                         className="sr-only peer"
                       />
@@ -245,19 +246,25 @@ export function TunnelCard({
                           isRunning
                             ? "bg-foreground"
                             : "bg-muted dark:bg-foreground/12"
-                        } ${isToggling || isIpv6Blocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                        } ${isToggling || isIpv6Blocked || isNodeOffline ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                       ></div>
                       <div
                         className={`absolute left-[2px] top-[3px] w-3.5 h-3.5 bg-background rounded-full shadow-sm transition-transform duration-300 ${
                           isRunning ? "translate-x-[18px]" : ""
-                        } ${isToggling || isIpv6Blocked ? "scale-90" : ""}`}
+                        } ${isToggling || isIpv6Blocked || isNodeOffline ? "scale-90" : ""}`}
                       ></div>
                     </label>
                   </TooltipTrigger>
-                  {isIpv6Blocked && (
+                  {isNodeOffline ? (
+                    <TooltipContent side="top" className="text-xs">
+                      此节点已离线
+                    </TooltipContent>
+                  ) : (
+                    isIpv6Blocked && (
                     <TooltipContent side="top" className="text-xs">
                       此节点无IPV6，您的网络仅支持IPV6
                     </TooltipContent>
+                    )
                   )}
                 </Tooltip>
               </TooltipProvider>
