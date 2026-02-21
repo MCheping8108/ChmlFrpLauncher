@@ -110,6 +110,11 @@ chmlfrp://start/{tunnel_id}
 
 欢迎提交 Issue 和 Pull Request！
 
+### Pull Request要求
+
+- 当编写代码时必须是develop分支，提交pr时必须指向develop分支
+- 当`git commit`时请遵循**Conventional Commits**规范
+
 ## 联系方式
 
 - **GitHub**: [TechCat-Team/ChmlFrpLauncher](https://github.com/TechCat-Team/ChmlFrpLauncher)
