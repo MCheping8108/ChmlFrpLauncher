@@ -344,7 +344,23 @@ export function AppearanceSection({
                     }}
                   />
                   <span className="text-xs text-muted-foreground w-10 text-right">
-                    {overlayOpacity}%
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={overlayOpacity}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        let numValue = parseInt(value, 10);
+                        
+                        if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+                          numValue = 0;
+                        }
+                        
+                        setOverlayOpacity(numValue);
+                      }}
+                      className="w-12 h-4 text-center text-xs text-foreground bg-muted rounded-md outline-none"
+                    />
                   </span>
                 </div>
               </ItemActions>
@@ -372,7 +388,23 @@ export function AppearanceSection({
                     }}
                   />
                   <span className="text-xs text-muted-foreground w-10 text-right">
-                    {blur}px
+                    <input
+                      type="number"
+                      min="0"
+                      max="20"
+                      value={blur}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        let numValue = parseInt(value, 10);
+                        
+                        if (isNaN(numValue) || numValue < 0 || numValue > 20) {
+                          numValue = 0;
+                        }
+                        
+                        setBlur(numValue);
+                      }}
+                      className="w-12 h-4 text-center text-xs text-foreground bg-muted rounded-md outline-none"
+                    />
                   </span>
                 </div>
               </ItemActions>
@@ -450,7 +482,28 @@ export function AppearanceSection({
                         }}
                       />
                       <span className="text-xs text-muted-foreground w-10 text-right">
-                        {videoVolume}%
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={videoVolume}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            let numValue = parseInt(value, 10);
+                            
+                            if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+                              numValue = 0;
+                            }
+                            
+                            setVideoVolume(numValue);
+                            localStorage.setItem(
+                              "videoVolume",
+                              numValue.toString(),
+                            );
+                            window.dispatchEvent(new Event("videoVolumeChanged"));
+                          }}
+                          className="w-12 h-4 text-center text-xs text-foreground bg-muted rounded-md outline-none"
+                        />
                       </span>
                     </div>
                   </ItemActions>
