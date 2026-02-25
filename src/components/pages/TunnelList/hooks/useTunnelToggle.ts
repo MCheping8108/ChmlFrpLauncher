@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { getStoredUser } from "@/services/api";
 import { frpcManager } from "@/services/frpcManager";
 import { customTunnelService } from "@/services/customTunnelService";
+import { logStore } from "@/services/logStore";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 
 interface UseTunnelToggleProps {
@@ -92,6 +93,27 @@ export function useTunnelToggle({
           message = await frpcManager.stopTunnel(tunnel.data.id);
         } else {
           message = await customTunnelService.stopCustomTunnel(tunnel.data.id);
+        }
+
+        const logTunnelId =
+          tunnel.type === "api" ? tunnel.data.id : tunnel.data.hashed_id;
+        if (typeof logTunnelId === "number" && Number.isFinite(logTunnelId)) {
+          const timestamp = new Date()
+            .toLocaleString("zh-CN", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: false,
+            })
+            .replace(/\//g, "/");
+          logStore.addLog({
+            tunnel_id: logTunnelId,
+            message: `[I] [ChmlFrpLauncher] 隧道"${tunnelName}"已手动停止。`,
+            timestamp,
+          });
         }
 
         toast.success(message || `隧道 ${tunnelName} 已停止`);
